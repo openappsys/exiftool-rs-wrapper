@@ -236,9 +236,8 @@ jobs:
     if: always()
     steps:
       - name: 发布成功通知
-        if: needs.create-release.result == 'success' && needs.publish-crates.result == 'success'
+        if: ${{ needs.create-release.result == 'success' && needs.publish-crates.result == 'success' && env.SLACK_WEBHOOK_URL != '' }}
         uses: 8398a7/action-slack@v3
-        if: env.SLACK_WEBHOOK_URL != ''
         with:
           status: success
           channel: '#releases'
@@ -251,9 +250,8 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: 发布失败通知
-        if: failure()
+        if: ${{ failure() && env.SLACK_WEBHOOK_URL != '' }}
         uses: 8398a7/action-slack@v3
-        if: env.SLACK_WEBHOOK_URL != ''
         with:
           status: failure
           channel: '#releases'
