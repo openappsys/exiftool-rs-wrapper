@@ -14,11 +14,7 @@
 //! cargo run --example async_usage --features async
 //! ```
 
-use exiftool_rs_wrapper::{
-    RetryPolicy, TagId,
-    async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel},
-    with_retry,
-};
+use exiftool_rs_wrapper::{RetryPolicy, TagId, async_ext::AsyncExifTool, with_retry};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -130,10 +126,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let filename = path.file_name().unwrap_or_default().to_string_lossy();
                 println!("   {}. {}", i + 1, filename);
 
-                if let Some(make) = metadata.get("Make") {
-                    if let Some(model) = metadata.get("Model") {
-                        println!("      📷 {} {}", make, model);
-                    }
+                if let Some(make) = metadata.get("Make")
+                    && let Some(model) = metadata.get("Model")
+                {
+                    println!("      📷 {} {}", make, model);
                 }
 
                 if let Some(size) = metadata.get("ImageSize") {
@@ -146,107 +142,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // ============================================================
-    // 5. 并行处理多个文件
+    // 5️⃣  并行处理（使用 tokio::spawn）
     // ============================================================
-    println!("5️⃣  并行处理（使用 process_files_parallel）");
-    println!("   使用 futures::stream 实现高并发处理\n");
+    println!("5️⃣  并行处理（使用 tokio::spawn）");
+    println!("   使用异步任务实现高并发处理\n");
 
     let start = tokio::time::Instant::now();
 
-    let results = process_files_parallel(
-        test_images.clone(),
-        4, // 并发数
-        |path| {
-            let et = exiftool.clone();
-            async move {
-                let metadata = et.query(&path).await?;
-                let filename = path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
-                Ok::<(String, usize), exiftool_rs_wrapper::Error>((filename, metadata.len()))
-            }
-        },
-    )
-    .await;
-
-    let duration = start.elapsed();
-    println!("   ✅ 并行处理完成（并发度: 4，耗时 {:?}）", duration);
+    let mut handles = vec![];
+    for path in test_images.clone() {
+        let et = exiftool.clone();
+        let handle = tokio::spawn(async move {
+            let metadata = et.query(&path).await?;
+            let filename = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            Ok::<(String, usize), exiftool_rs_wrapper::Error>((filename, metadata.len()))
+        });
+        handles.push(handle);
+    }
 
     let mut success_count = 0;
     let mut fail_count = 0;
 
-    for result in &results {
-        match result {
-            Ok((filename, tag_count)) => {
-                success_count += 1;
-                if success_count <= 5 {
-                    println!("   ✓ {} - {} 个标签", filename, tag_count);
+    for handle in handles {
+        match handle.await {
+            Ok(Ok((filename, count))) => {
+                if success_count < 3 {
+                    println!("      - {}: {} 个标签", filename, count);
                 }
+                success_count += 1;
             }
+            Ok(Err(_)) => fail_count += 1,
             Err(_) => fail_count += 1,
         }
     }
 
-    if success_count > 5 {
-        println!("   ... 还有 {} 个文件", success_count - 5);
-    }
-    println!("   📊 成功: {}, 失败: {}\n", success_count, fail_count);
-
-    // ============================================================
-    // 6. 并发元数据读取
-    // ============================================================
-    println!("6️⃣  并发元数据读取（read_metadata_parallel）");
-
-    let start = tokio::time::Instant::now();
-
-    let parallel_results = read_metadata_parallel(
-        exiftool.clone(),
-        test_images.clone(),
-        3, // 并发数
-    )
-    .await;
-
     let duration = start.elapsed();
-    println!("   ✅ 并发读取完成（并发度: 3，耗时 {:?}）", duration);
-    println!("   📊 读取 {} 个文件的元数据\n", parallel_results.len());
 
-    // ============================================================
-    // 7. 异步写入标签
-    // ============================================================
-    println!("7️⃣  异步写入标签");
-
-    if !test_images.is_empty() {
-        // 创建测试副本
-        let test_copy = create_test_copy(&test_images[0])?;
-        println!("   📝 写入到: {}", test_copy.display());
-
-        match exiftool
-            .write_tag(&test_copy, "Copyright", "© 2026 Async Example")
-            .await
-        {
-            Ok(_) => {
-                println!("   ✅ 异步写入成功");
-
-                // 验证
-                match exiftool
-                    .read_tag::<String, _, _>(&test_copy, "Copyright")
-                    .await
-                {
-                    Ok(value) => println!("   📋 验证: {}", value),
-                    Err(e) => println!("   ⚠️  验证失败: {}", e),
-                }
-            }
-            Err(e) => eprintln!("   ❌ 写入失败: {}", e),
-        }
-
-        // 清理
-        if test_copy.exists() {
-            std::fs::remove_file(&test_copy)?;
-            println!("   ✅ 测试文件已清理");
-        }
+    if success_count > 3 {
+        println!("      ... 还有 {} 个文件", success_count - 3);
     }
+
+    println!(
+        "   ✅ 并行处理完成（并发度: {}, 耗时 {:?}）",
+        test_images.len(),
+        duration
+    );
+    println!(
+        "   📊 结果: ✅ 成功 {}, ❌ 失败 {}",
+        success_count, fail_count
+    );
     println!();
 
     // ============================================================
@@ -315,19 +263,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !test_copies.is_empty() {
         println!("   📝 批量添加版权信息到 {} 个文件", test_copies.len());
 
-        let operations: Vec<_> = test_copies
-            .iter()
-            .map(|path| {
-                let path = path.clone();
-                (path, |builder: exiftool_rs_wrapper::WriteBuilder<'_>| {
-                    builder
-                        .tag("Copyright", "© 2026 Batch Async")
-                        .overwrite_original(true)
-                })
-            })
-            .collect();
-
-        let results = exiftool.write_batch(operations).await;
+        // 批量写入 - 使用串行方式（与 write_batch 效果相同）
+        let mut results = Vec::new();
+        for path in &test_copies {
+            let result = exiftool
+                .write_tag(path, "Copyright", "© 2026 Batch Async")
+                .await;
+            results.push(result);
+        }
 
         let success = results.iter().filter(|r| r.is_ok()).count();
         let failed = results.iter().filter(|r| r.is_err()).count();

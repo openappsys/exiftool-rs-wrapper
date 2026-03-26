@@ -120,7 +120,7 @@ fn bench_pool_vs_single(c: &mut Criterion) {
                 let pool = ExifToolPool::new(4).expect("Failed to create pool");
 
                 b.iter(|| {
-                    let results: Vec<_> = paths
+                    let _results: Vec<_> = paths
                         .iter()
                         .map(|path| {
                             exiftool_rs_wrapper::with_pool(&pool, |et| et.query(path).execute())
@@ -138,7 +138,7 @@ fn bench_pool_vs_single(c: &mut Criterion) {
                 let pool = ExifToolPool::new(8).expect("Failed to create pool");
 
                 b.iter(|| {
-                    let results: Vec<_> = paths
+                    let _results: Vec<_> = paths
                         .iter()
                         .map(|path| {
                             exiftool_rs_wrapper::with_pool(&pool, |et| et.query(path).execute())

@@ -303,17 +303,17 @@ fn find_test_images() -> Vec<PathBuf> {
     }
 
     // 如果没有找到，尝试当前目录
-    if images.is_empty() {
-        if let Ok(entries) = std::fs::read_dir(".") {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if let Some(ext) = path.extension() {
-                    let ext = ext.to_string_lossy().to_lowercase();
-                    if ext == "jpg" || ext == "jpeg" {
-                        images.push(path);
-                        if images.len() >= 5 {
-                            break;
-                        }
+    if images.is_empty()
+        && let Ok(entries) = std::fs::read_dir(".")
+    {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                let ext = ext.to_string_lossy().to_lowercase();
+                if ext == "jpg" || ext == "jpeg" {
+                    images.push(path);
+                    if images.len() >= 5 {
+                        break;
                     }
                 }
             }

@@ -155,6 +155,12 @@ impl From<&'static str> for TagId {
     }
 }
 
+impl AsRef<str> for TagId {
+    fn as_ref(&self) -> &str {
+        self.0
+    }
+}
+
 /// 标签值类型 - 支持 ExifTool 返回的所有数据类型
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
