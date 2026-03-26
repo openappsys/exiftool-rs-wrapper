@@ -213,17 +213,26 @@ pub trait StreamingOperations {
 impl StreamingOperations for ExifTool {
     fn process_streaming<P, F, R>(
         &self,
-        _path: P,
-        _options: &StreamOptions,
-        _processor: F,
+        path: P,
+        options: &StreamOptions,
+        mut processor: F,
     ) -> Result<R>
     where
         P: AsRef<Path>,
         F: FnMut(&mut dyn Read) -> Result<R>,
     {
-        // 流式处理需要使用 ExifTool 的流式模式
-        // 这里简化处理，实际实现会更复杂
-        todo!("Streaming mode requires special handling with ExifTool process")
+        // 使用标准文件读取实现流式处理
+        let file = std::fs::File::open(path.as_ref())
+            .map_err(crate::error::Error::Io)?;
+
+        let tracker = Arc::new(ProgressTracker::new(
+            1,
+            options.progress_callback.clone(),
+        ));
+
+        let mut reader = ProgressReader::new(file, tracker, options.buffer_size);
+
+        processor(&mut reader)
     }
 
     fn process_batch_with_progress<P, F>(

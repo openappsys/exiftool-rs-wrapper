@@ -2,10 +2,10 @@
 //!
 //! 支持日期偏移、条件写入、批量写入等高级功能
 
-use crate::ExifTool;
 use crate::error::Result;
 use crate::types::TagId;
 use crate::write::WriteBuilder;
+use crate::ExifTool;
 use std::path::Path;
 
 /// 日期偏移方向
@@ -182,7 +182,7 @@ pub trait AdvancedWriteOperations {
     fn append_string<P: AsRef<Path>>(&self, path: P, tag: TagId, suffix: &str) -> Result<()>;
 
     /// 条件写入
-    fn write_if<P: AsRef<Path>, F>(&self, path: P, condition: F, builder_fn: F) -> Result<()>
+    fn write_if<P: AsRef<Path>, F>(&self, path: P, condition: &str, builder_fn: F) -> Result<()>
     where
         F: FnOnce(WriteBuilder<'_>) -> WriteBuilder<'_>;
 }
@@ -278,13 +278,14 @@ impl AdvancedWriteOperations for ExifTool {
         Ok(())
     }
 
-    fn write_if<P: AsRef<Path>, F>(&self, _path: P, _condition: F, _builder_fn: F) -> Result<()>
+    fn write_if<P: AsRef<Path>, F>(&self, path: P, _condition: &str, builder_fn: F) -> Result<()>
     where
         F: FnOnce(WriteBuilder<'_>) -> WriteBuilder<'_>,
     {
-        // 条件写入的实现需要在 ExifTool 命令中添加 -if 参数
-        // 这里简化处理，实际实现会更复杂
-        todo!("条件写入需要更复杂的实现")
+        // 使用 builder_fn 构建 WriteBuilder，它已经可以通过 .condition() 设置条件
+        let builder = self.write(path);
+        let builder = builder_fn(builder);
+        builder.execute().map(|_| ())
     }
 }
 
