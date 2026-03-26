@@ -2,9 +2,9 @@
 //!
 //! 支持配置文件加载、自定义标签定义、校验和计算
 
+use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::TagId;
-use crate::ExifTool;
 use std::path::{Path, PathBuf};
 
 /// 校验和算法

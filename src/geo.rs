@@ -2,9 +2,9 @@
 //!
 //! 支持地理标记、反向地理编码等功能
 
+use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::TagId;
-use crate::ExifTool;
 use std::path::Path;
 
 /// GPS 坐标
