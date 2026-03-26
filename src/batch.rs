@@ -2,9 +2,9 @@
 //!
 //! 支持批处理脚本执行和管道数据流
 
+use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::Metadata;
-use crate::ExifTool;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 
