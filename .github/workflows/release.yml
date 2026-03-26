@@ -107,7 +107,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: 验证包
-        run: cargo publish --dry-run --allow-dirty
+        run: cargo publish --dry-run
 
       - name: 发布到 crates.io
         run: |

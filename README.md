@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/exiftool-rs-wrapper.svg)](https://crates.io/crates/exiftool-rs-wrapper)
 [![docs.rs](https://docs.rs/exiftool-rs-wrapper/badge.svg)](https://docs.rs/exiftool-rs-wrapper)
 [![CI](https://github.com/openappsys/exiftool-rs-wrapper/workflows/CI/badge.svg)](https://github.com/openappsys/exiftool-rs-wrapper/actions)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust Version](https://img.shields.io/badge/rust-1.94%2B-orange.svg)](https://www.rust-lang.org)
 
 **中文** | [English](README-EN.md)
@@ -543,10 +543,9 @@ cargo fmt --check
 
 ## 许可证
 
-本项目采用 MIT 或 Apache-2.0 双许可证，您可以选择任一许可证使用本项目。
+本项目采用 Apache-2.0 许可证。
 
-- MIT License: 参见 [LICENSE](LICENSE) 文件
-- Apache-2.0 License: 参见 [LICENSE-APACHE](LICENSE-APACHE) 文件（如有）
+- Apache-2.0 License: 参见 [LICENSE](LICENSE) 文件
 
 ## 致谢
 

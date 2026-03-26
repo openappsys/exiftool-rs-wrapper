@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/exiftool-rs-wrapper.svg)](https://crates.io/crates/exiftool-rs-wrapper)
 [![docs.rs](https://docs.rs/exiftool-rs-wrapper/badge.svg)](https://docs.rs/exiftool-rs-wrapper)
 [![CI](https://github.com/openappsys/exiftool-rs-wrapper/workflows/CI/badge.svg)](https://github.com/openappsys/exiftool-rs-wrapper/actions)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust Version](https://img.shields.io/badge/rust-1.94%2B-orange.svg)](https://www.rust-lang.org)
 
 [中文](README.md) | **English**
@@ -542,10 +542,9 @@ cargo fmt --check
 
 ## License
 
-This project is dual-licensed under MIT OR Apache-2.0. You may choose either license.
+This project is licensed under the Apache-2.0 License.
 
-- MIT License: See [LICENSE](LICENSE) file
-- Apache-2.0 License: See [LICENSE-APACHE](LICENSE-APACHE) file (if available)
+- Apache-2.0 License: See [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
