@@ -33,18 +33,33 @@
 //! ```
 
 // 模块声明
+mod binary;
 mod error;
 mod process;
 mod query;
 mod types;
 mod write;
 
+/// 高级功能模块
+pub mod advanced;
+
+/// 异步 API 模块
+#[cfg(feature = "async")]
+pub mod async_ext;
+
 // 公开导出
+pub use advanced::{
+    AdvancedWriteOperations, DateShiftDirection, DateTimeOffset, NumericOperation, TimeUnit,
+};
+pub use binary::{BinaryOperations, BinaryTag, BinaryWriteBuilder, BinaryWriteResult};
 pub use error::{Error, Result};
 pub use process::Response;
 pub use query::{BatchQueryBuilder, QueryBuilder};
 pub use types::{Metadata, TagId, TagValue};
 pub use write::{WriteBuilder, WriteResult};
+
+#[cfg(feature = "async")]
+pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
 
 use process::ExifToolInner;
 use std::path::{Path, PathBuf};
