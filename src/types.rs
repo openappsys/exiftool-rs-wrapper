@@ -141,6 +141,98 @@ impl TagId {
     pub const ICC_VIEWING_CONDITIONS_DESCRIPTION: Self = Self("ICCViewingConditionsDescription");
     pub const ICC_DEVICE_MODEL: Self = Self("ICCDeviceModel");
     pub const ICC_DEVICE_MANUFACTURER: Self = Self("ICCDeviceManufacturer");
+
+    // === IPTC 标签 ===
+    pub const IPTC_OBJECT_NAME: Self = Self("ObjectName");
+    pub const IPTC_EDIT_STATUS: Self = Self("EditStatus");
+    pub const IPTC_EDITORIAL_UPDATE: Self = Self("EditorialUpdate");
+    pub const IPTC_URGENCY: Self = Self("Urgency");
+    pub const IPTC_SUBJECT_REFERENCE: Self = Self("SubjectReference");
+    pub const IPTC_CATEGORY: Self = Self("Category");
+    pub const IPTC_SUPPLEMENTAL_CATEGORY: Self = Self("SupplementalCategory");
+    pub const IPTC_FIXTURE_IDENTIFIER: Self = Self("FixtureIdentifier");
+    pub const IPTC_KEYWORDS: Self = Self("Keywords");
+    pub const IPTC_CONTENT_LOCATION_CODE: Self = Self("ContentLocationCode");
+    pub const IPTC_CONTENT_LOCATION_NAME: Self = Self("ContentLocationName");
+    pub const IPTC_RELEASE_DATE: Self = Self("ReleaseDate");
+    pub const IPTC_RELEASE_TIME: Self = Self("ReleaseTime");
+    pub const IPTC_EXPIRATION_DATE: Self = Self("ExpirationDate");
+    pub const IPTC_EXPIRATION_TIME: Self = Self("ExpirationTime");
+    pub const IPTC_SPECIAL_INSTRUCTIONS: Self = Self("SpecialInstructions");
+    pub const IPTC_ACTION_ADVISED: Self = Self("ActionAdvised");
+    pub const IPTC_REFERENCE_SERVICE: Self = Self("ReferenceService");
+    pub const IPTC_REFERENCE_DATE: Self = Self("ReferenceDate");
+    pub const IPTC_REFERENCE_NUMBER: Self = Self("ReferenceNumber");
+    pub const IPTC_DATE_CREATED: Self = Self("DateCreated");
+    pub const IPTC_TIME_CREATED: Self = Self("TimeCreated");
+    pub const IPTC_DIGITAL_CREATION_DATE: Self = Self("DigitalCreationDate");
+    pub const IPTC_DIGITAL_CREATION_TIME: Self = Self("DigitalCreationTime");
+    pub const IPTC_ORIGINATING_PROGRAM: Self = Self("OriginatingProgram");
+    pub const IPTC_PROGRAM_VERSION: Self = Self("ProgramVersion");
+    pub const IPTC_OBJECT_CYCLE: Self = Self("ObjectCycle");
+    pub const IPTC_BY_LINE: Self = Self("By-line");
+    pub const IPTC_BY_LINE_TITLE: Self = Self("By-lineTitle");
+    pub const IPTC_CITY: Self = Self("City");
+    pub const IPTC_SUB_LOCATION: Self = Self("Sub-location");
+    pub const IPTC_PROVINCE_STATE: Self = Self("Province-State");
+    pub const IPTC_COUNTRY_PRIMARY_LOCATION_CODE: Self = Self("Country-PrimaryLocationCode");
+    pub const IPTC_COUNTRY_PRIMARY_LOCATION_NAME: Self = Self("Country-PrimaryLocationName");
+    pub const IPTC_ORIGINAL_TRANSMISSION_REFERENCE: Self = Self("OriginalTransmissionReference");
+    pub const IPTC_HEADLINE: Self = Self("Headline");
+    pub const IPTC_CREDIT: Self = Self("Credit");
+    pub const IPTC_SOURCE: Self = Self("Source");
+    pub const IPTC_COPYRIGHT_NOTICE: Self = Self("CopyrightNotice");
+    pub const IPTC_CONTACT: Self = Self("Contact");
+    pub const IPTC_CAPTION_ABSTRACT: Self = Self("Caption-Abstract");
+    pub const IPTC_WRITER_EDITOR: Self = Self("Writer-Editor");
+    pub const IPTC_IMAGE_TYPE: Self = Self("ImageType");
+    pub const IPTC_IMAGE_ORIENTATION: Self = Self("ImageOrientation");
+    pub const IPTC_LANGUAGE_IDENTIFIER: Self = Self("LanguageIdentifier");
+
+    // === XMP 标签 ( Dublin Core ) ===
+    pub const XMP_DC_TITLE: Self = Self("Title");
+    pub const XMP_DC_CREATOR: Self = Self("Creator");
+    pub const XMP_DC_SUBJECT: Self = Self("Subject");
+    pub const XMP_DC_DESCRIPTION: Self = Self("Description");
+    pub const XMP_DC_PUBLISHER: Self = Self("Publisher");
+    pub const XMP_DC_CONTRIBUTOR: Self = Self("Contributor");
+    pub const XMP_DC_DATE: Self = Self("Date");
+    pub const XMP_DC_TYPE: Self = Self("Type");
+    pub const XMP_DC_FORMAT: Self = Self("Format");
+    pub const XMP_DC_IDENTIFIER: Self = Self("Identifier");
+    pub const XMP_DC_SOURCE: Self = Self("Source");
+    pub const XMP_DC_LANGUAGE: Self = Self("Language");
+    pub const XMP_DC_RELATION: Self = Self("Relation");
+    pub const XMP_DC_COVERAGE: Self = Self("Coverage");
+    pub const XMP_DC_RIGHTS: Self = Self("Rights");
+
+    // === XMP 标签 ( XMP Rights ) ===
+    pub const XMP_XMP_RIGHTS_MANAGED: Self = Self("RightsManaged");
+    pub const XMP_XMP_RIGHTS_MARKED: Self = Self("RightsMarked");
+    pub const XMP_XMP_RIGHTS_WEB_STATEMENT: Self = Self("WebStatement");
+    pub const XMP_XMP_RIGHTS_USAGE_TERMS: Self = Self("UsageTerms");
+
+    // === 图像尺寸标签 ===
+    pub const IMAGE_SIZE: Self = Self("ImageSize");
+    pub const MEGAPIXELS: Self = Self("Megapixels");
+    pub const QUALITY: Self = Self("Quality");
+    pub const BITS_PER_SAMPLE: Self = Self("BitsPerSample");
+    pub const COLOR_COMPONENTS: Self = Self("ColorComponents");
+    pub const Y_CB_CR_SUB_SAMPLING: Self = Self("YCbCrSubSampling");
+    pub const Y_CB_CR_POSITIONING: Self = Self("YCbCrPositioning");
+
+    // === 缩略图标签 ===
+    pub const THUMBNAIL_IMAGE: Self = Self("ThumbnailImage");
+    pub const THUMBNAIL_LENGTH: Self = Self("ThumbnailLength");
+    pub const THUMBNAIL_OFFSET: Self = Self("ThumbnailOffset");
+    pub const PREVIEW_IMAGE: Self = Self("PreviewImage");
+    pub const PREVIEW_IMAGE_TYPE: Self = Self("PreviewImageType");
+    pub const JPG_FROM_RAW: Self = Self("JpgFromRaw");
+    pub const OTHER_IMAGE: Self = Self("OtherImage");
+
+    // === 色彩空间标签 ===
+    pub const COLOR_SPACE: Self = Self("ColorSpace");
+    pub const GAMMA: Self = Self("Gamma");
 }
 
 impl fmt::Display for TagId {
