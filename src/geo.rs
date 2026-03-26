@@ -2,9 +2,9 @@
 //!
 //! 支持地理标记、反向地理编码等功能
 
-use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::TagId;
+use crate::ExifTool;
 use std::path::Path;
 
 /// GPS 坐标
@@ -219,24 +219,70 @@ impl GeoOperations for ExifTool {
         Ok(())
     }
 
-    fn reverse_geocode<P: AsRef<Path>>(&self, _coord: &GpsCoordinate) -> Result<GeocodeResult> {
+    fn reverse_geocode<P: AsRef<Path>>(&self, coord: &GpsCoordinate) -> Result<GeocodeResult> {
         // 使用 ExifTool 的 -geolocation 功能
-        // 注意：这需要 ExifTool 配置地理编码数据库
+        // 需要提供地理编码数据库或调用外部服务
+
+        // 创建临时文件存储坐标
+        let mut temp_file = std::env::temp_dir();
+        temp_file.push(format!("geocode_{}.txt", std::process::id()));
+
+        // 写入坐标到临时文件
+        let coord_str = format!("{:.6},{:.6}", coord.latitude, coord.longitude);
+        std::fs::write(&temp_file, &coord_str).map_err(Error::Io)?;
+
+        // 使用 exiftool -geolocation 选项
+        // 注意：这需要系统安装了地理编码数据库
         let args = vec![
-            "-ver".to_string(), // 简化版，实际需要使用 geolocation 选项
+            "-geolocation".to_string(),
+            temp_file.to_string_lossy().to_string(),
         ];
 
-        let _response = self.execute_raw(&args)?;
+        let response = self.execute_raw(&args)?;
 
-        // 返回模拟结果（实际实现需要调用地理编码服务）
-        Ok(GeocodeResult {
-            city: None,
-            region: None,
-            country: None,
-            country_code: None,
-            address: None,
-        })
+        // 清理临时文件
+        let _ = std::fs::remove_file(&temp_file);
+
+        // 解析响应
+        let output = response.text();
+        parse_geocode_result(&output)
     }
+}
+
+/// 解析地理编码结果
+fn parse_geocode_result(output: &str) -> Result<GeocodeResult> {
+    let mut result = GeocodeResult {
+        city: None,
+        region: None,
+        country: None,
+        country_code: None,
+        address: None,
+    };
+
+    for line in output.lines() {
+        let line = line.trim();
+        if line.starts_with("City") {
+            result.city = extract_value(line);
+        } else if line.starts_with("Region") {
+            result.region = extract_value(line);
+        } else if line.starts_with("Country") {
+            result.country = extract_value(line);
+        } else if line.starts_with("Country Code") {
+            result.country_code = extract_value(line);
+        } else if line.starts_with("Address") {
+            result.address = extract_value(line);
+        }
+    }
+
+    Ok(result)
+}
+
+/// 从行中提取值
+fn extract_value(line: &str) -> Option<String> {
+    line.splitn(2, ':')
+        .nth(1)
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 #[cfg(test)]
