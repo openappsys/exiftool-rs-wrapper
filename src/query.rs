@@ -2,10 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::process::Response;
 use crate::types::{Metadata, TagId};
+use crate::ExifTool;
 
 /// 查询构建器
 pub struct QueryBuilder<'et> {
@@ -110,9 +110,272 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 设置 GPS 坐标格式
+    ///
+    /// 使用 `-c` 选项设置 GPS 坐标的输出格式
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用小数度格式
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .coord_format("%.6f")
+    ///     .execute()?;
+    ///
+    /// // 使用度分秒格式
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .coord_format("%d deg %d' %.2f\"")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn coord_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-c {}", format.into()));
+        self
+    }
+
+    /// 设置日期/时间格式
+    ///
+    /// 使用 `-d` 选项设置日期/时间值的输出格式
+    ///
+    /// # 预设格式
+    ///
+    /// - `"%Y:%m:%d %H:%M:%S"` - 标准 EXIF 格式（默认）
+    /// - `"%Y-%m-%d"` - ISO 日期格式
+    /// - `"%c"` - 本地时间格式
+    /// - `"%F %T"` - ISO 8601 格式
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用 ISO 格式
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .date_format("%Y-%m-%d %H:%M:%S")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn date_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-d {}", format.into()));
+        self
+    }
+
     /// 添加原始参数（高级用法）
     pub fn arg(mut self, arg: impl Into<String>) -> Self {
         self.args.push(arg.into());
+        self
+    }
+
+    /// 设置自定义打印格式
+    ///
+    /// 使用 `-p` 选项按指定格式打印输出。
+    /// 使用 `$TAGNAME` 语法引用标签值。
+    ///
+    /// # 格式语法
+    ///
+    /// - `$TAGNAME` - 插入标签值
+    /// - `$TAGNAME#` - 插入原始数值（无格式化）
+    /// - `${TAGNAME:FMT}` - 使用指定格式
+    /// - `$$` - 插入 `$` 字符
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 自定义输出格式
+    /// let output = exiftool.query("photo.jpg")
+    ///     .print_format("$FileName: $DateTimeOriginal ($Make $Model)")
+    ///     .execute_text()?;
+    ///
+    /// println!("{}", output);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn print_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-p {}", format.into()));
+        self
+    }
+
+    /// 按字母顺序排序输出
+    ///
+    /// 使用 `-sort` 选项对标签进行字母排序
+    pub fn sort(mut self, yes: bool) -> Self {
+        if yes {
+            self.args.push("-sort".to_string());
+        }
+        self
+    }
+
+    /// 设置列表项分隔符
+    ///
+    /// 使用 `-sep` 选项设置列表项的分隔符字符串
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用逗号分隔列表项
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .separator(", ")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn separator(mut self, sep: impl Into<String>) -> Self {
+        self.args.push(format!("-sep {}", sep.into()));
+        self
+    }
+
+    /// 启用快速模式
+    ///
+    /// 使用 `-fast` 选项提高元数据提取速度。
+    /// 这会跳过某些处理步骤，可能遗漏某些信息。
+    ///
+    /// # 级别
+    ///
+    /// - `None` - 不使用快速模式（默认）
+    /// - `Some(1)` - `-fast` 基础快速模式
+    /// - `Some(2)` - `-fast2` 更激进的快速模式
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用快速模式处理大量文件
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .fast(Some(1))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn fast(mut self, level: Option<u8>) -> Self {
+        match level {
+            Some(1) => self.args.push("-fast".to_string()),
+            Some(l) if l > 1 => self.args.push(format!("-fast{}", l)),
+            _ => {}
+        }
+        self
+    }
+
+    /// 强制扫描 XMP 数据
+    ///
+    /// 使用 `-scanForXMP` 选项暴力扫描文件中的 XMP 数据
+    pub fn scan_for_xmp(mut self, yes: bool) -> Self {
+        if yes {
+            self.args.push("-scanForXMP".to_string());
+        }
+        self
+    }
+
+    /// 设置 API 选项
+    ///
+    /// 使用 `-api` 选项设置 ExifTool API 选项。
+    /// 常见选项包括：`QuickTimeUTC`, `SystemTags`, `largefilesupport`
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 启用 QuickTimeUTC
+    /// let metadata = exiftool.query("video.mp4")
+    ///     .api_option("QuickTimeUTC", None::<&str>)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
+        let arg = match value {
+            Some(v) => format!("-api {}={}", opt.into(), v.into()),
+            None => format!("-api {}", opt.into()),
+        };
+        self.args.push(arg);
+        self
+    }
+
+    /// 设置用户参数
+    ///
+    /// 使用 `-userParam` 选项设置用户参数，可在配置文件中使用
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 设置自定义参数
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .user_param("MyParam", Some("value"))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn user_param(
+        mut self,
+        param: impl Into<String>,
+        value: Option<impl Into<String>>,
+    ) -> Self {
+        let arg = match value {
+            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
+            None => format!("-userParam {}", param.into()),
+        };
+        self.args.push(arg);
+        self
+    }
+
+    /// 设置密码
+    ///
+    /// 使用 `-password` 选项处理受密码保护的文件
+    ///
+    /// # 安全性警告
+    ///
+    /// 密码将以纯文本形式传递给 ExifTool 进程。
+    /// 在多用户系统中使用时请注意安全性。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 读取受密码保护的 PDF
+    /// let metadata = exiftool.query("protected.pdf")
+    ///     .password("secret123")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn password(mut self, passwd: impl Into<String>) -> Self {
+        self.args.push(format!("-password {}", passwd.into()));
         self
     }
 
@@ -139,6 +402,33 @@ impl<'et> QueryBuilder<'et> {
         let args = self.build_args();
         let response = self.exiftool.execute_raw(&args)?;
         response.json()
+    }
+
+    /// 执行查询并返回纯文本
+    ///
+    /// 当使用 `-p` (print_format) 选项时，
+    /// 使用此方法获取纯文本输出而非 JSON
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let output = exiftool.query("photo.jpg")
+    ///     .print_format("$FileName: $DateTimeOriginal")
+    ///     .execute_text()?;
+    ///
+    /// println!("{}", output);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn execute_text(self) -> Result<String> {
+        let args = self.build_args();
+        let response = self.exiftool.execute_raw(&args)?;
+        Ok(response.text().trim().to_string())
     }
 
     /// 构建参数列表
@@ -269,6 +559,86 @@ impl<'et> BatchQueryBuilder<'et> {
         for tag in tags {
             self.specific_tags.push(tag.as_ref().to_string());
         }
+        self
+    }
+
+    /// 设置 GPS 坐标格式
+    pub fn coord_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-c {}", format.into()));
+        self
+    }
+
+    /// 设置日期/时间格式
+    pub fn date_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-d {}", format.into()));
+        self
+    }
+
+    /// 设置密码
+    pub fn password(mut self, passwd: impl Into<String>) -> Self {
+        self.args.push(format!("-password {}", passwd.into()));
+        self
+    }
+
+    /// 启用快速模式
+    pub fn fast(mut self, level: Option<u8>) -> Self {
+        match level {
+            Some(1) => self.args.push("-fast".to_string()),
+            Some(l) if l > 1 => self.args.push(format!("-fast{}", l)),
+            _ => {}
+        }
+        self
+    }
+
+    /// 强制扫描 XMP 数据
+    pub fn scan_for_xmp(mut self, yes: bool) -> Self {
+        if yes {
+            self.args.push("-scanForXMP".to_string());
+        }
+        self
+    }
+
+    /// 设置 API 选项
+    pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
+        let arg = match value {
+            Some(v) => format!("-api {}={}", opt.into(), v.into()),
+            None => format!("-api {}", opt.into()),
+        };
+        self.args.push(arg);
+        self
+    }
+
+    /// 设置用户参数
+    pub fn user_param(
+        mut self,
+        param: impl Into<String>,
+        value: Option<impl Into<String>>,
+    ) -> Self {
+        let arg = match value {
+            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
+            None => format!("-userParam {}", param.into()),
+        };
+        self.args.push(arg);
+        self
+    }
+
+    /// 设置自定义打印格式
+    pub fn print_format(mut self, format: impl Into<String>) -> Self {
+        self.args.push(format!("-p {}", format.into()));
+        self
+    }
+
+    /// 按字母顺序排序输出
+    pub fn sort(mut self, yes: bool) -> Self {
+        if yes {
+            self.args.push("-sort".to_string());
+        }
+        self
+    }
+
+    /// 设置列表项分隔符
+    pub fn separator(mut self, sep: impl Into<String>) -> Self {
+        self.args.push(format!("-sep {}", sep.into()));
         self
     }
 

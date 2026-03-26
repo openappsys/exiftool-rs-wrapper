@@ -233,6 +233,296 @@ impl TagId {
     // === 色彩空间标签 ===
     pub const COLOR_SPACE: Self = Self("ColorSpace");
     pub const GAMMA: Self = Self("Gamma");
+
+    // === 复合标签 (Composite) ===
+    pub const HYPERFOCAL_DISTANCE: Self = Self("HyperfocalDistance");
+    pub const SCALE_FACTOR_35EFL: Self = Self("ScaleFactor35efl");
+    pub const CIRCLE_OF_CONFUSION: Self = Self("CircleOfConfusion");
+    pub const FIELD_OF_VIEW: Self = Self("FieldOfView");
+    pub const LENS_ID: Self = Self("LensID");
+    pub const LENS_INFO: Self = Self("LensInfo");
+    pub const LENS_SPEC: Self = Self("LensSpec");
+    pub const LENS_MAKE: Self = Self("LensMake");
+    pub const LENS_MODEL: Self = Self("LensModel");
+    pub const LENS_SERIAL_NUMBER: Self = Self("LensSerialNumber");
+
+    // === Canon MakerNotes ===
+    pub const CANON_MODEL_ID: Self = Self("CanonModelID");
+    pub const CANON_EXPOSURE_MODE: Self = Self("CanonExposureMode");
+    pub const CANON_FLASH_MODE: Self = Self("CanonFlashMode");
+    pub const CANON_LENS_TYPE: Self = Self("CanonLensType");
+    pub const CANON_LENS_MODEL: Self = Self("CanonLensModel");
+    pub const CANON_IMAGE_SIZE: Self = Self("CanonImageSize");
+    pub const CANON_IMAGE_QUALITY: Self = Self("CanonImageQuality");
+    pub const CANON_SHARPNESS: Self = Self("CanonSharpness");
+    pub const CANON_CONTRAST: Self = Self("CanonContrast");
+    pub const CANON_SATURATION: Self = Self("CanonSaturation");
+    pub const CANON_COLOR_TONE: Self = Self("CanonColorTone");
+    pub const CANON_COLOR_SPACE: Self = Self("CanonColorSpace");
+    pub const CANON_PICTURE_STYLE: Self = Self("CanonPictureStyle");
+    pub const CANON_DRIVE_MODE: Self = Self("CanonDriveMode");
+    pub const CANON_FOCUS_MODE: Self = Self("CanonFocusMode");
+    pub const CANON_METERING_MODE: Self = Self("CanonMeteringMode");
+    pub const CANON_AF_POINT: Self = Self("CanonAFPoint");
+    pub const CANON_SELF_TIMER: Self = Self("CanonSelfTimer");
+    pub const CANON_IMAGE_STABILIZATION: Self = Self("CanonImageStabilization");
+    pub const CANON_WHITE_BALANCE: Self = Self("CanonWhiteBalance");
+
+    // === Nikon MakerNotes ===
+    pub const NIKON_MAKE: Self = Self("NikonMake");
+    pub const NIKON_QUALITY: Self = Self("NikonQuality");
+    pub const NIKON_COLOR_MODE: Self = Self("NikonColorMode");
+    pub const NIKON_IMAGE_ADJUSTMENT: Self = Self("NikonImageAdjustment");
+    pub const NIKON_CCD_SENSITIVITY: Self = Self("NikonCCDSensitivity");
+    pub const NIKON_WHITE_BALANCE_FINE: Self = Self("NikonWhiteBalanceFine");
+    pub const NIKON_ISO_SETTING: Self = Self("NikonISOSetting");
+    pub const NIKON_IMAGE_OPTIMIZATION: Self = Self("NikonImageOptimization");
+    pub const NIKON_SATURATION_ADJUST: Self = Self("NikonSaturationAdjust");
+    pub const NIKON_SHARPNESS_ADJUST: Self = Self("NikonSharpnessAdjust");
+    pub const NIKON_FOCUS_MODE: Self = Self("NikonFocusMode");
+    pub const NIKON_FLASH_MODE: Self = Self("NikonFlashMode");
+    pub const NIKON_SHOOTING_MODE: Self = Self("NikonShootingMode");
+    pub const NIKON_AUTO_BRACKET_RELEASE: Self = Self("NikonAutoBracketRelease");
+    pub const NIKON_LENS_TYPE: Self = Self("NikonLensType");
+    pub const NIKON_LENS: Self = Self("NikonLens");
+
+    // === Sony MakerNotes ===
+    pub const SONY_MAKE: Self = Self("SonyMake");
+    pub const SONY_IMAGE_SIZE: Self = Self("SonyImageSize");
+    pub const SONY_QUALITY: Self = Self("SonyQuality");
+    pub const SONY_FLASH_MODE: Self = Self("SonyFlashMode");
+    pub const SONY_EXPOSURE_MODE: Self = Self("SonyExposureMode");
+    pub const SONY_FOCUS_MODE: Self = Self("SonyFocusMode");
+    pub const SONY_WHITE_BALANCE_MODE: Self = Self("SonyWhiteBalanceMode");
+    pub const SONY_MACRO: Self = Self("SonyMacro");
+    pub const SONY_SHARPNESS: Self = Self("SonySharpness");
+    pub const SONY_SATURATION: Self = Self("SonySaturation");
+    pub const SONY_CONTRAST: Self = Self("SonyContrast");
+    pub const SONY_BRIGHTNESS: Self = Self("SonyBrightness");
+    pub const SONY_LONG_EXPOSURE_NOISE_REDUCTION: Self = Self("SonyLongExposureNoiseReduction");
+    pub const SONY_HIGH_ISO_NOISE_REDUCTION: Self = Self("SonyHighISONoiseReduction");
+    pub const SONY_HDR: Self = Self("SonyHDR");
+    pub const SONY_MULTI_FRAME_NR: Self = Self("SonyMultiFrameNR");
+
+    // === Fuji MakerNotes ===
+    pub const FUJI_QUALITY: Self = Self("FujiQuality");
+    pub const FUJI_SATURATION: Self = Self("FujiSaturation");
+    pub const FUJI_WHITE_BALANCE_FINE_TUNE: Self = Self("FujiWhiteBalanceFineTune");
+    pub const FUJI_HIGH_IS0_NOISE_REDUCTION: Self = Self("FujiHighIS0NoiseReduction");
+    pub const FUJI_FOCUS_MODE: Self = Self("FujiFocusMode");
+    pub const FUJI_AF_MODE: Self = Self("FujiAFMode");
+    pub const FUJI_FOCUS_PIXEL: Self = Self("FujiFocusPixel");
+    pub const FUJI_IMAGE_SIZE: Self = Self("FujiImageSize");
+    pub const FUJI_DUAL_IMAGE_STABILIZATION: Self = Self("FujiDualImageStabilization");
+    pub const FUJI_FACE_DETECTION: Self = Self("FujiFaceDetection");
+    pub const FUJI_NUM_FACE_ELEMENTS: Self = Self("FujiNumFaceElements");
+
+    // === Panasonic MakerNotes ===
+    pub const PANASONIC_IMAGE_QUALITY: Self = Self("PanasonicImageQuality");
+    pub const PANASONIC_COLOR_MODE: Self = Self("PanasonicColorMode");
+    pub const PANASONIC_IMAGE_STABILIZATION: Self = Self("PanasonicImageStabilization");
+    pub const PANASONIC_MACRO_MODE: Self = Self("PanasonicMacroMode");
+    pub const PANASONIC_FOCUS_MODE: Self = Self("PanasonicFocusMode");
+    pub const PANASONIC_AF_AREA_MODE: Self = Self("PanasonicAFAreaMode");
+    pub const PANASONIC_IMAGE_STABILIZATION2: Self = Self("PanasonicImageStabilization2");
+    pub const PANASONIC_BABY_AGE: Self = Self("PanasonicBabyAge");
+    pub const PANASONIC_BABY_NAME: Self = Self("PanasonicBabyName");
+
+    // === Olympus MakerNotes ===
+    pub const OLYMPUS_IMAGE_QUALITY: Self = Self("OlympusImageQuality");
+    pub const OLYMPUS_MACRO_MODE: Self = Self("OlympusMacroMode");
+    pub const OLYMPUS_DIGITAL_ZOOM: Self = Self("OlympusDigitalZoom");
+    pub const OLYMPUS_VERSION: Self = Self("OlympusVersion");
+    pub const OLYMPUS_IMAGE_PROCESSING: Self = Self("OlympusImageProcessing");
+    pub const OLYMPUS_FOCUS_MODE: Self = Self("OlympusFocusMode");
+    pub const OLYMPUS_AF_AREA: Self = Self("OlympusAFArea");
+    pub const OLYMPUS_AF_POINT: Self = Self("OlympusAFPoint");
+    pub const OLYMPUS_IMAGE_STABILIZATION: Self = Self("OlympusImageStabilization");
+    pub const OLYMPUS_COLOR_SPACE: Self = Self("OlympusColorSpace");
+
+    // === Pentax MakerNotes ===
+    pub const PENTAX_MODEL_TYPE: Self = Self("PentaxModelType");
+    pub const PENTAX_IMAGE_SIZE: Self = Self("PentaxImageSize");
+    pub const PENTAX_QUALITY: Self = Self("PentaxQuality");
+    pub const PENTAX_IMAGE_PROCESSING: Self = Self("PentaxImageProcessing");
+    pub const PENTAX_FOCUS_MODE: Self = Self("PentaxFocusMode");
+    pub const PENTAX_AF_POINT: Self = Self("PentaxAFPoint");
+    pub const PENTAX_AUTO_BRACKETING: Self = Self("PentaxAutoBracketing");
+    pub const PENTAX_WHITE_BALANCE: Self = Self("PentaxWhiteBalance");
+
+    // === 更多 XMP 命名空间 ===
+    pub const XMP_XMP_CREATE_DATE: Self = Self("xmp:CreateDate");
+    pub const XMP_XMP_MODIFY_DATE: Self = Self("xmp:ModifyDate");
+    pub const XMP_XMP_METADATA_DATE: Self = Self("xmp:MetadataDate");
+    pub const XMP_XMP_CREATOR_TOOL: Self = Self("xmp:CreatorTool");
+    pub const XMP_XMP_RATING: Self = Self("xmp:Rating");
+    pub const XMP_XMP_LABEL: Self = Self("xmp:Label");
+    pub const XMP_XMP_NICKNAME: Self = Self("xmp:Nickname");
+
+    // === XMP IPTC Core ===
+    pub const XMP_IPTC_CITY: Self = Self("Iptc4xmpCore:City");
+    pub const XMP_IPTC_COUNTRY: Self = Self("Iptc4xmpCore:Country");
+    pub const XMP_IPTC_COUNTRY_CODE: Self = Self("Iptc4xmpCore:CountryCode");
+    pub const XMP_IPTC_STATE: Self = Self("Iptc4xmpCore:State");
+    pub const XMP_IPTC_LOCATION: Self = Self("Iptc4xmpCore:Location");
+    pub const XMP_IPTC_SUBJECT_CODE: Self = Self("Iptc4xmpCore:SubjectCode");
+    pub const XMP_IPTC_INTELLECTUAL_GENRE: Self = Self("Iptc4xmpCore:IntellectualGenre");
+
+    // === XMP IPTC Extension ===
+    pub const XMP_IPTC_EXT_DIGITAL_SOURCE_TYPE: Self = Self("Iptc4xmpExt:DigitalSourceType");
+    pub const XMP_IPTC_EXT_DIGITAL_GUIDE: Self = Self("Iptc4xmpExt:DigitalGuide");
+    pub const XMP_IPTC_EXT_EVENT: Self = Self("Iptc4xmpExt:Event");
+    pub const XMP_IPTC_EXT_ORGANISATION_IN_IMAGE: Self = Self("Iptc4xmpExt:OrganisationInImage");
+    pub const XMP_IPTC_EXT_PERSON_IN_IMAGE: Self = Self("Iptc4xmpExt:PersonInImage");
+    pub const XMP_IPTC_EXT_LOCATION_SHOWN: Self = Self("Iptc4xmpExt:LocationShown");
+
+    // === XMP Photoshop ===
+    pub const XMP_PHOTOSHOP_DATE_CREATED: Self = Self("photoshop:DateCreated");
+    pub const XMP_PHOTOSHOP_CITY: Self = Self("photoshop:City");
+    pub const XMP_PHOTOSHOP_STATE: Self = Self("photoshop:State");
+    pub const XMP_PHOTOSHOP_COUNTRY: Self = Self("photoshop:Country");
+    pub const XMP_PHOTOSHOP_CREDIT: Self = Self("photoshop:Credit");
+    pub const XMP_PHOTOSHOP_SOURCE: Self = Self("photoshop:Source");
+    pub const XMP_PHOTOSHOP_INSTRUCTIONS: Self = Self("photoshop:Instructions");
+    pub const XMP_PHOTOSHOP_TRANSMISSION_REFERENCE: Self = Self("photoshop:TransmissionReference");
+    pub const XMP_PHOTOSHOP_URGENCY: Self = Self("photoshop:Urgency");
+    pub const XMP_PHOTOSHOP_CATEGORY: Self = Self("photoshop:Category");
+    pub const XMP_PHOTOSHOP_SUPPLEMENTAL_CATEGORIES: Self =
+        Self("photoshop:SupplementalCategories");
+    pub const XMP_PHOTOSHOP_HEADLINE: Self = Self("photoshop:Headline");
+    pub const XMP_PHOTOSHOP_CAPTION_WRITER: Self = Self("photoshop:CaptionWriter");
+
+    // === XMP Camera Raw ===
+    pub const XMP_CRS_VERSION: Self = Self("crs:Version");
+    pub const XMP_CRS_WHITE_BALANCE: Self = Self("crs:WhiteBalance");
+    pub const XMP_CRS_TEMPERATURE: Self = Self("crs:Temperature");
+    pub const XMP_CRS_TINT: Self = Self("crs:Tint");
+    pub const XMP_CRS_EXPOSURE: Self = Self("crs:Exposure");
+    pub const XMP_CRS_SHADOWS: Self = Self("crs:Shadows");
+    pub const XMP_CRS_BRIGHTNESS: Self = Self("crs:Brightness");
+    pub const XMP_CRS_CONTRAST: Self = Self("crs:Contrast");
+    pub const XMP_CRS_SATURATION: Self = Self("crs:Saturation");
+    pub const XMP_CRS_SHARPNESS: Self = Self("crs:Sharpness");
+    pub const XMP_CRS_LUMINANCE_SMOOTHING: Self = Self("crs:LuminanceSmoothing");
+    pub const XMP_CRS_COLOR_NOISE_REDUCTION: Self = Self("crs:ColorNoiseReduction");
+    pub const XMP_CRS_VIGNETTE_AMOUNT: Self = Self("crs:VignetteAmount");
+
+    // === XMP AUX (Camera Raw Schema) ===
+    pub const XMP_AUX_SERIAL_NUMBER: Self = Self("aux:SerialNumber");
+    pub const XMP_AUX_LENS_INFO: Self = Self("aux:LensInfo");
+    pub const XMP_AUX_LENS: Self = Self("aux:Lens");
+    pub const XMP_AUX_LENS_ID: Self = Self("aux:LensID");
+    pub const XMP_AUX_LENS_SERIAL_NUMBER: Self = Self("aux:LensSerialNumber");
+    pub const XMP_AUX_IMAGE_NUMBER: Self = Self("aux:ImageNumber");
+    pub const XMP_AUX_FLASH_COMPENSATION: Self = Self("aux:FlashCompensation");
+    pub const XMP_AUX_FIRMWARE: Self = Self("aux:Firmware");
+
+    // === XMP MM (Media Management) ===
+    pub const XMP_MM_DOCUMENT_ID: Self = Self("xmpMM:DocumentID");
+    pub const XMP_MM_INSTANCE_ID: Self = Self("xmpMM:InstanceID");
+    pub const XMP_MM_ORIGINAL_DOCUMENT_ID: Self = Self("xmpMM:OriginalDocumentID");
+    pub const XMP_MM_RENDITION_CLASS: Self = Self("xmpMM:RenditionClass");
+    pub const XMP_MM_VERSION_ID: Self = Self("xmpMM:VersionID");
+    pub const XMP_MM_VERSION_MODIFIER: Self = Self("xmpMM:VersionModifier");
+    pub const XMP_MM_HISTORY: Self = Self("xmpMM:History");
+    pub const XMP_MM_DERIVED_FROM: Self = Self("xmpMM:DerivedFrom");
+
+    // === XMP TIFF ===
+    pub const XMP_TIFF_MAKE: Self = Self("tiff:Make");
+    pub const XMP_TIFF_MODEL: Self = Self("tiff:Model");
+    pub const XMP_TIFF_IMAGE_WIDTH: Self = Self("tiff:ImageWidth");
+    pub const XMP_TIFF_IMAGE_HEIGHT: Self = Self("tiff:ImageHeight");
+    pub const XMP_TIFF_BITS_PER_SAMPLE: Self = Self("tiff:BitsPerSample");
+    pub const XMP_TIFF_COMPRESSION: Self = Self("tiff:Compression");
+    pub const XMP_TIFF_PHOTOMETRIC_INTERPRETATION: Self = Self("tiff:PhotometricInterpretation");
+    pub const XMP_TIFF_ORIENTATION: Self = Self("tiff:Orientation");
+    pub const XMP_TIFF_SAMPLES_PER_PIXEL: Self = Self("tiff:SamplesPerPixel");
+    pub const XMP_TIFF_PLANAR_CONFIGURATION: Self = Self("tiff:PlanarConfiguration");
+    pub const XMP_TIFF_YCBCR_SUB_SAMPLING: Self = Self("tiff:YCbCrSubSampling");
+    pub const XMP_TIFF_YCBCR_POSITIONING: Self = Self("tiff:YCbCrPositioning");
+    pub const XMP_TIFF_X_RESOLUTION: Self = Self("tiff:XResolution");
+    pub const XMP_TIFF_Y_RESOLUTION: Self = Self("tiff:YResolution");
+    pub const XMP_TIFF_RESOLUTION_UNIT: Self = Self("tiff:ResolutionUnit");
+
+    // === XMP EXIF ===
+    pub const XMP_EXIF_EXPOSURE_TIME: Self = Self("exif:ExposureTime");
+    pub const XMP_EXIF_F_NUMBER: Self = Self("exif:FNumber");
+    pub const XMP_EXIF_EXPOSURE_PROGRAM: Self = Self("exif:ExposureProgram");
+    pub const XMP_EXIF_SPECTRAL_SENSITIVITY: Self = Self("exif:SpectralSensitivity");
+    pub const XMP_EXIF_ISO_SPEED_RATINGS: Self = Self("exif:ISOSpeedRatings");
+    pub const XMP_EXIF_DATE_TIME_ORIGINAL: Self = Self("exif:DateTimeOriginal");
+    pub const XMP_EXIF_DATE_TIME_DIGITIZED: Self = Self("exif:DateTimeDigitized");
+    pub const XMP_EXIF_COMPONENTS_CONFIGURATION: Self = Self("exif:ComponentsConfiguration");
+    pub const XMP_EXIF_COMPRESSED_BITS_PER_PIXEL: Self = Self("exif:CompressedBitsPerPixel");
+    pub const XMP_EXIF_SHUTTER_SPEED_VALUE: Self = Self("exif:ShutterSpeedValue");
+    pub const XMP_EXIF_APERTURE_VALUE: Self = Self("exif:ApertureValue");
+    pub const XMP_EXIF_BRIGHTNESS_VALUE: Self = Self("exif:BrightnessValue");
+    pub const XMP_EXIF_EXPOSURE_BIAS_VALUE: Self = Self("exif:ExposureBiasValue");
+    pub const XMP_EXIF_MAX_APERTURE_VALUE: Self = Self("exif:MaxApertureValue");
+    pub const XMP_EXIF_SUBJECT_DISTANCE: Self = Self("exif:SubjectDistance");
+    pub const XMP_EXIF_METERING_MODE: Self = Self("exif:MeteringMode");
+    pub const XMP_EXIF_LIGHT_SOURCE: Self = Self("exif:LightSource");
+    pub const XMP_EXIF_FLASH: Self = Self("exif:Flash");
+    pub const XMP_EXIF_FOCAL_LENGTH: Self = Self("exif:FocalLength");
+    pub const XMP_EXIF_FLASH_ENERGY: Self = Self("exif:FlashEnergy");
+    pub const XMP_EXIF_SPATIAL_FREQUENCY_RESPONSE: Self = Self("exif:SpatialFrequencyResponse");
+    pub const XMP_EXIF_FOCAL_PLANE_X_RESOLUTION: Self = Self("exif:FocalPlaneXResolution");
+    pub const XMP_EXIF_FOCAL_PLANE_Y_RESOLUTION: Self = Self("exif:FocalPlaneYResolution");
+    pub const XMP_EXIF_FOCAL_PLANE_RESOLUTION_UNIT: Self = Self("exif:FocalPlaneResolutionUnit");
+    pub const XMP_EXIF_SUBJECT_LOCATION: Self = Self("exif:SubjectLocation");
+    pub const XMP_EXIF_EXPOSURE_INDEX: Self = Self("exif:ExposureIndex");
+    pub const XMP_EXIF_SENSING_METHOD: Self = Self("exif:SensingMethod");
+    pub const XMP_EXIF_FILE_SOURCE: Self = Self("exif:FileSource");
+    pub const XMP_EXIF_SCENE_TYPE: Self = Self("exif:SceneType");
+    pub const XMP_EXIF_CFA_PATTERN: Self = Self("exif:CFAPattern");
+    pub const XMP_EXIF_CUSTOM_RENDERED: Self = Self("exif:CustomRendered");
+    pub const XMP_EXIF_EXPOSURE_MODE: Self = Self("exif:ExposureMode");
+    pub const XMP_EXIF_WHITE_BALANCE: Self = Self("exif:WhiteBalance");
+    pub const XMP_EXIF_DIGITAL_ZOOM_RATIO: Self = Self("exif:DigitalZoomRatio");
+    pub const XMP_EXIF_FOCAL_LENGTH_IN_35MM_FILM: Self = Self("exif:FocalLengthIn35mmFilm");
+    pub const XMP_EXIF_SCENE_CAPTURE_TYPE: Self = Self("exif:SceneCaptureType");
+    pub const XMP_EXIF_GAIN_CONTROL: Self = Self("exif:GainControl");
+    pub const XMP_EXIF_CONTRAST: Self = Self("exif:Contrast");
+    pub const XMP_EXIF_SATURATION: Self = Self("exif:Saturation");
+    pub const XMP_EXIF_SHARPNESS: Self = Self("exif:Sharpness");
+    pub const XMP_EXIF_DEVICE_SETTING_DESCRIPTION: Self = Self("exif:DeviceSettingDescription");
+    pub const XMP_EXIF_SUBJECT_DISTANCE_RANGE: Self = Self("exif:SubjectDistanceRange");
+    pub const XMP_EXIF_IMAGE_UNIQUE_ID: Self = Self("exif:ImageUniqueID");
+
+    // === 视频特定标签 ===
+    pub const DURATION: Self = Self("Duration");
+    pub const VIDEO_FRAME_RATE: Self = Self("VideoFrameRate");
+    pub const VIDEO_FRAME_COUNT: Self = Self("VideoFrameCount");
+    pub const VIDEO_BIT_RATE: Self = Self("VideoBitRate");
+    pub const AUDIO_BIT_RATE: Self = Self("AudioBitRate");
+    pub const VIDEO_COMPRESSION: Self = Self("VideoCompression");
+    pub const AUDIO_COMPRESSION: Self = Self("AudioCompression");
+    pub const TRACK_NUMBER: Self = Self("TrackNumber");
+    pub const TRACK_TYPE: Self = Self("TrackType");
+    pub const TRACK_CREATE_DATE: Self = Self("TrackCreateDate");
+    pub const TRACK_MODIFY_DATE: Self = Self("TrackModifyDate");
+    pub const MEDIA_CREATE_DATE: Self = Self("MediaCreateDate");
+    pub const MEDIA_MODIFY_DATE: Self = Self("MediaModifyDate");
+    pub const MEDIA_DATA_SIZE: Self = Self("MediaDataSize");
+    pub const MEDIA_DATA_OFFSET: Self = Self("MediaDataOffset");
+    pub const GENRE: Self = Self("Genre");
+    // ARTIST 已在上面定义
+    pub const ALBUM: Self = Self("Album");
+    pub const YEAR: Self = Self("Year");
+    pub const COMMENT: Self = Self("Comment");
+    pub const LYRICS: Self = Self("Lyrics");
+    pub const COMPOSER: Self = Self("Composer");
+    pub const PUBLISHER: Self = Self("Publisher");
+
+    // === 更多文件信息 ===
+    pub const FILE_DESCRIPTION: Self = Self("FileDescription");
+    pub const FILE_VERSION: Self = Self("FileVersion");
+    pub const INTERNAL_VERSION_NUMBER: Self = Self("InternalVersionNumber");
+    pub const COMPANY_NAME: Self = Self("CompanyName");
+    pub const LEGAL_COPYRIGHT: Self = Self("LegalCopyright");
+    pub const PRODUCT_NAME: Self = Self("ProductName");
+    pub const PRODUCT_VERSION: Self = Self("ProductVersion");
+    pub const MIME_ENCODING: Self = Self("MIMEEncoding");
 }
 
 impl fmt::Display for TagId {
