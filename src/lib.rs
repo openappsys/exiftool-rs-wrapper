@@ -35,6 +35,8 @@
 // 模块声明
 mod binary;
 mod error;
+mod format;
+mod pool;
 mod process;
 mod query;
 mod types;
@@ -57,6 +59,12 @@ pub use process::Response;
 pub use query::{BatchQueryBuilder, QueryBuilder};
 pub use types::{Metadata, TagId, TagValue};
 pub use write::{WriteBuilder, WriteResult};
+
+// 连接池
+pub use pool::{ExifToolPool, PoolConnection, batch_with_pool, with_pool};
+
+// 格式化输出
+pub use format::{FormatOperations, FormattedOutput, OutputFormat, ReadOptions};
 
 #[cfg(feature = "async")]
 pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
