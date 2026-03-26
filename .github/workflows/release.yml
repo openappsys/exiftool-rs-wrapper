@@ -1,0 +1,265 @@
+name: 自动发布
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 检查版本号
+  check-version:
+    name: 检查版本号
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 获取 Cargo.toml 版本号
+        id: get-version
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "检测到版本: $VERSION"
+
+      - name: 验证版本号匹配
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${{ steps.get-version.outputs.version }}
+          if [[ "$TAG" != "v$VERSION" && "$TAG" != "$VERSION" ]]; then
+            echo "错误: 标签 $TAG 与 Cargo.toml 版本 $VERSION 不匹配"
+            exit 1
+          fi
+          echo "版本号验证通过: $TAG"
+
+  # 创建 GitHub Release
+  create-release:
+    name: 创建 GitHub Release
+    needs: check-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+      release_id: ${{ steps.create-release.outputs.id }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 生成 CHANGELOG 片段
+        id: changelog
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          TAG=${GITHUB_REF#refs/tags/}
+          
+          # 获取上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          
+          if [ -n "$PREV_TAG" ]; then
+            echo "## 变更日志 ($PREV_TAG -> $TAG)" > CHANGELOG_TEMP.md
+            echo "" >> CHANGELOG_TEMP.md
+            git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> CHANGELOG_TEMP.md
+          else
+            echo "## 初始版本 $TAG" > CHANGELOG_TEMP.md
+            echo "" >> CHANGELOG_TEMP.md
+            git log --pretty=format:"- %s (%h)" >> CHANGELOG_TEMP.md
+          fi
+          
+          echo "" >> CHANGELOG_TEMP.md
+          echo "## 提交信息" >> CHANGELOG_TEMP.md
+          echo "" >> CHANGELOG_TEMP.md
+          
+          cat CHANGELOG_TEMP.md
+
+      - name: 创建 Release
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG_TEMP.md
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 发布到 crates.io
+  publish-crates:
+    name: 发布到 crates.io
+    needs: [check-version, create-release]
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: 验证包
+        run: cargo publish --dry-run --allow-dirty
+
+      - name: 发布到 crates.io
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # 构建并上传二进制文件
+  build-binaries:
+    name: 构建二进制文件
+    needs: [check-version, create-release]
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-x64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: macos-x64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: macos-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: windows-x64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 安装交叉编译工具 (Linux)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: 构建 Release
+        run: cargo build --release --target ${{ matrix.target }} --all-features
+
+      - name: 打包二进制文件 (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../exiftool-rs-wrapper-${{ matrix.name }}.tar.gz exiftool-rs-wrapper
+          cd ../../..
+
+      - name: 打包二进制文件 (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../exiftool-rs-wrapper-${{ matrix.name }}.zip exiftool-rs-wrapper.exe
+          cd ../../..
+
+      - name: 上传 Release 资源
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            exiftool-rs-wrapper-${{ matrix.name }}.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 更新 CHANGELOG.md
+  update-changelog:
+    name: 更新 CHANGELOG
+    needs: [check-version, publish-crates]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 更新 CHANGELOG.md
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          TAG=${GITHUB_REF#refs/tags/}
+          DATE=$(date +%Y-%m-%d)
+          
+          # 创建新的 CHANGELOG 条目
+          cat > NEW_CHANGELOG.md << EOF
+          # Changelog
+
+          所有显著变更都将记录在此文件中。
+
+          ## [$VERSION] - $DATE
+
+          ### 新增
+          - 版本 $VERSION 发布
+
+          EOF
+          
+          # 如果已有 CHANGELOG.md，追加历史记录
+          if [ -f CHANGELOG.md ]; then
+            tail -n +4 CHANGELOG.md >> NEW_CHANGELOG.md
+          fi
+          
+          mv NEW_CHANGELOG.md CHANGELOG.md
+
+      - name: 提交 CHANGELOG 更新
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: 更新 CHANGELOG 为版本 ${{ needs.check-version.outputs.version }}"
+          git push
+
+  # 发布通知
+  notify:
+    name: 发布通知
+    needs: [create-release, publish-crates, build-binaries]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 发布成功通知
+        if: needs.create-release.result == 'success' && needs.publish-crates.result == 'success'
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: success
+          channel: '#releases'
+          text: |
+            ExifTool Rust Wrapper ${{ needs.check-version.outputs.version }} 发布成功！
+            
+            - GitHub Release: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            - Crates.io: https://crates.io/crates/exiftool-rs-wrapper/${{ needs.check-version.outputs.version }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 发布失败通知
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: failure
+          channel: '#releases'
+          text: |
+            ExifTool Rust Wrapper ${{ needs.check-version.outputs.version }} 发布失败！
+            
+            请检查工作流日志: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

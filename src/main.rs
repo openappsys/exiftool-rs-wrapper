@@ -53,7 +53,7 @@ fn print_usage() {
     println!("示例:");
     println!("  exiftool-rs-wrapper read photo.jpg");
     println!("  exiftool-rs-wrapper read photo.jpg Make");
-    println!("  exiftool-rs-wrapper write photo.jpg Copyright \"© 2024\"");
+    println!("  exiftool-rs-wrapper write photo.jpg Copyright \"© 2026\"");
     println!("  exiftool-rs-wrapper delete photo.jpg Comment");
 }
 

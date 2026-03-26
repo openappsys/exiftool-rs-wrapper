@@ -1,0 +1,224 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 每周一早上 8 点运行
+    - cron: '0 8 * * 1'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # 检查代码格式
+  fmt:
+    name: 代码格式检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 运行 rustfmt 检查
+        run: cargo fmt --all -- --check
+
+  # 静态代码分析
+  clippy:
+    name: Clippy 代码分析
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        uses: ryankurte/action-apt@v1
+        with:
+          packages: libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 运行 Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  # 多平台测试矩阵
+  test:
+    name: 测试 ${{ matrix.os }} / Rust ${{ matrix.rust }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, beta]
+        include:
+          # 添加 nightly 版本只在 ubuntu 上运行
+          - os: ubuntu-latest
+            rust: nightly
+          # 添加 MSRV 检查
+          - os: ubuntu-latest
+            rust: "1.94"
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        uses: ryankurte/action-apt@v1
+        with:
+          packages: libimage-exiftool-perl
+
+      - name: 安装 ExifTool (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install exiftool
+
+      - name: 安装 ExifTool (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install exiftool
+          echo "C:\Program Files\exiftool" >> $env:GITHUB_PATH
+
+      - name: 安装 Rust ${{ matrix.rust }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 验证 ExifTool 安装
+        run: exiftool -ver
+        shell: bash
+
+      - name: 构建项目
+        run: cargo build --all-features --verbose
+
+      - name: 运行测试
+        run: cargo test --all-features --verbose
+
+      - name: 运行测试 (仅库)
+        run: cargo test --lib --all-features --verbose
+
+  # 代码覆盖率
+  coverage:
+    name: 代码覆盖率
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        uses: ryankurte/action-apt@v1
+        with:
+          packages: libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装 cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-coverage-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 生成覆盖率报告
+        run: cargo tarpaulin --all-features --out Xml --out Html
+
+      - name: 上传覆盖率到 Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cobertura.xml
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 上传覆盖率报告作为产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            cobertura.xml
+            tarpaulin-report.html
+
+  # 文档构建检查
+  doc:
+    name: 文档构建检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-doc-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 构建文档
+        run: cargo doc --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # 依赖检查
+  audit:
+    name: 安全审计
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 运行安全审计
+        uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # 失败通知
+  notify:
+    name: 失败通知
+    needs: [fmt, clippy, test, coverage, doc, audit]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: 发送失败通知
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: ${{ job.status }}
+          channel: '#ci-cd'
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 创建 Issue 通知
+        if: github.event_name == 'schedule' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CI 失败: ${new Date().toISOString()}`,
+              body: `定时 CI 任务失败，请检查工作流日志。\n\n[查看详情](${context.payload.repository.html_url}/actions/runs/${context.runId})`,
+              labels: ['CI', 'bug']
+            })

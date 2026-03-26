@@ -2,13 +2,23 @@
 name = "exiftool-rs-wrapper"
 version = "0.1.0"
 edition = "2024"
-authors = ["Your Name <your.email@example.com>"]
-description = "A Rust wrapper for ExifTool"
-license = "MIT OR Apache-2.0"
+authors = ["Open Application Systems <oss@openappsys.com>"]
+description = "一个高性能、类型安全的 ExifTool Rust 封装库，支持异步 API"
+license = "Apache-2.0"
 repository = "https://github.com/openappsys/exiftool-rs-wrapper"
-keywords = ["exif", "metadata", "exiftool", "wrapper"]
-categories = ["multimedia::images", "api-bindings"]
-rust-version = "1.94"
+documentation = "https://docs.rs/exiftool-rs-wrapper"
+homepage = "https://github.com/openappsys/exiftool-rs-wrapper"
+readme = "README.md"
+keywords = ["exif", "metadata", "exiftool", "wrapper", "image"]
+categories = ["multimedia::images", "api-bindings", "multimedia::video"]
+rust-version = "1.85"
+include = [
+    "/src",
+    "/Cargo.toml",
+    "/LICENSE",
+    "/README.md",
+    "/CHANGELOG.md",
+]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -16,11 +26,60 @@ serde_json = "1.0"
 thiserror = "2.0"
 tracing = "0.1"
 base64 = "0.22"
-tokio = { version = "1.0", features = ["sync", "rt"], optional = true }
+tokio = { version = "1.50", features = ["sync", "rt"], optional = true }
 futures = { version = "0.3", optional = true }
 tempfile = "3.27"
-lru = "0.12"
+lru = "0.16"
 
 [features]
 default = []
 async = ["tokio", "futures"]
+
+[dev-dependencies]
+tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "bench_metadata"
+harness = false
+
+[[bench]]
+name = "bench_write"
+harness = false
+
+[[bench]]
+name = "bench_batch"
+harness = false
+
+[[bench]]
+name = "bench_pool"
+harness = false
+
+[[bench]]
+name = "bench_comparison"
+harness = false
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "batch_processing"
+path = "examples/batch_processing.rs"
+
+[[example]]
+name = "advanced_features"
+path = "examples/advanced_features.rs"
+
+[[example]]
+name = "async_usage"
+path = "examples/async_usage.rs"
+required-features = ["async"]
+
+[[example]]
+name = "error_handling"
+path = "examples/error_handling.rs"
+
+[[example]]
+name = "performance_optimization"
+path = "examples/performance_optimization.rs"
