@@ -303,11 +303,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fn process_with_fallback(image: &PathBuf, exiftool: &ExifTool) -> Result<String, Error> {
         // 策略 1: 尝试读取 Make 标签
         match exiftool.read_tag::<String, _, _>(image, "Make") {
-            Ok(make) => return Ok(format!("Make: {}", make)),
+            Ok(make) => Ok(format!("Make: {}", make)),
             Err(Error::TagNotFound(_)) => {
                 // 策略 2: 如果 Make 不存在，尝试 Model
                 match exiftool.read_tag::<String, _, _>(image, "Model") {
-                    Ok(model) => return Ok(format!("Model: {}", model)),
+                    Ok(model) => Ok(format!("Model: {}", model)),
                     Err(Error::TagNotFound(_)) => {
                         // 策略 3: 获取所有元数据
                         match exiftool.query(image).execute() {
@@ -373,12 +373,7 @@ fn find_test_image() -> Option<PathBuf> {
         PathBuf::from("test.jpg"),
     ];
 
-    for path in paths {
-        if path.exists() {
-            return Some(path);
-        }
-    }
-    None
+    paths.into_iter().find(|p| p.exists())
 }
 
 /// 查找测试图片（多个）

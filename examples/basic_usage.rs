@@ -92,16 +92,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 读取图像尺寸
-    match exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_WIDTH.name()) {
-        Ok(width) => {
-            match exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_HEIGHT.name()) {
-                Ok(height) => {
-                    println!("   📐 图像尺寸: {} x {} 像素", width, height);
-                }
-                Err(_) => {}
-            }
-        }
-        Err(_) => {}
+    if let Ok(width) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_WIDTH.name())
+        && let Ok(height) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_HEIGHT.name())
+    {
+        println!("   📐 图像尺寸: {} x {} 像素", width, height);
     }
     println!();
 
@@ -229,13 +223,7 @@ fn find_test_image() -> Option<PathBuf> {
         PathBuf::from("test.jpg"),
     ];
 
-    for path in possible_paths {
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
+    possible_paths.into_iter().find(|path| path.exists())
 }
 
 /// 创建测试副本

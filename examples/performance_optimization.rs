@@ -44,9 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut single_results = 0;
     for image in &test_images {
-        match exiftool.query(image).tag("FileName").execute() {
-            Ok(_) => single_results += 1,
-            Err(_) => {}
+        if exiftool.query(image).tag("FileName").execute().is_ok() {
+            single_results += 1
         }
     }
 
@@ -191,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let current = progress_counter_clone.fetch_add(1, Ordering::SeqCst);
         let percentage = (processed as f64 / total as f64) * 100.0;
 
-        if current % 5 == 0 || processed == total {
+        if current.is_multiple_of(5) || processed == total {
             println!("   📊 进度: {}/{} ({:.1}%)", processed, total, percentage);
         }
 

@@ -3,8 +3,8 @@
 //! 提供基于 tokio 的异步 ExifTool API
 
 use crate::ExifTool;
-use crate::error::{Error, Result};
-use crate::types::{Metadata, TagId, TagValue};
+use crate::error::Result;
+use crate::types::Metadata;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -60,8 +60,8 @@ impl AsyncExifTool {
     pub async fn write_tag<P, S, V>(&self, path: P, tag: S, value: V) -> Result<()>
     where
         P: AsRef<Path> + Send,
-        S: AsRef<str> + Send,
-        V: AsRef<str> + Send,
+        S: AsRef<str> + Send + Into<String>,
+        V: AsRef<str> + Send + Into<String>,
     {
         let exiftool = self.inner.lock().await;
         exiftool
@@ -76,7 +76,7 @@ impl AsyncExifTool {
     pub async fn delete_tag<P, S>(&self, path: P, tag: S) -> Result<()>
     where
         P: AsRef<Path> + Send,
-        S: AsRef<str> + Send,
+        S: AsRef<str> + Send + Into<String>,
     {
         let exiftool = self.inner.lock().await;
         exiftool
@@ -142,10 +142,13 @@ where
     R: Send + 'static,
 {
     use futures::stream::{self, StreamExt};
+    use std::sync::Arc;
+
+    let processor = Arc::new(processor);
 
     stream::iter(paths)
-        .map(|path| {
-            let processor = &processor;
+        .map(move |path| {
+            let processor = Arc::clone(&processor);
             async move { processor(path).await }
         })
         .buffer_unordered(concurrency)
@@ -159,7 +162,7 @@ pub async fn read_metadata_parallel<P: AsRef<Path> + Send + Sync + 'static>(
     paths: Vec<P>,
     concurrency: usize,
 ) -> Vec<Result<Metadata>> {
-    process_files_parallel(paths, concurrency, |path| {
+    process_files_parallel(paths, concurrency, move |path| {
         let et = exiftool.clone();
         async move { et.query(path).await }
     })
@@ -168,8 +171,6 @@ pub async fn read_metadata_parallel<P: AsRef<Path> + Send + Sync + 'static>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_async_exiftool_creation() {
         // 创建异步 ExifTool
