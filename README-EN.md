@@ -6,66 +6,66 @@
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 [![Rust Version](https://img.shields.io/badge/rust-1.94%2B-orange.svg)](https://www.rust-lang.org)
 
-**中文** | [English](README-EN.md)
+[中文](README.md) | **English**
 
-> 一个高性能、类型安全的 Rust ExifTool 封装库，提供 100% ExifTool 功能覆盖
+> A high-performance, type-safe Rust wrapper for ExifTool with 100% feature coverage
 
-## 简介
+## Introduction
 
-`exiftool-rs-wrapper` 是一个现代化的 Rust 库，用于读取、写入和管理图像、视频、音频等多媒体文件的元数据。本库封装了强大的 [ExifTool](https://exiftool.org/) 命令行工具，提供符合 Rust 习惯的 API 设计。
+`exiftool-rs-wrapper` is a modern Rust library for reading, writing, and managing metadata of multimedia files including images, videos, and audio. This library wraps the powerful [ExifTool](https://exiftool.org/) command-line tool with an idiomatic Rust API.
 
-### 核心特点
+### Core Features
 
-- **100% 功能覆盖**：完整支持 ExifTool 的所有读取、写入和高级功能
-- **高性能**：使用 `-stay_open` 模式保持进程运行，避免频繁启动开销
-- **类型安全**：完整的标签类型系统和强类型 API
-- **异步支持**：基于 Tokio 的异步 API（可选特性）
-- **连接池**：内置连接池支持高并发场景
-- **Builder 模式**：流畅的 API 设计，链式调用
+- **100% Feature Coverage**: Complete support for all ExifTool read, write, and advanced features
+- **High Performance**: Uses `-stay_open` mode to keep the process running, avoiding startup overhead
+- **Type Safety**: Complete tag type system with strongly-typed APIs
+- **Async Support**: Tokio-based async API (optional feature)
+- **Connection Pool**: Built-in connection pool for high-concurrency scenarios
+- **Builder Pattern**: Fluent API design with method chaining
 
-## 功能特性
+## Feature Highlights
 
-### 元数据读取
+### Metadata Reading
 
-- 读取 EXIF、IPTC、XMP 等标准元数据
-- 支持 200+ 文件格式（JPEG、PNG、RAW、MP4、PDF 等）
-- 选择性读取特定标签
-- 批量查询多个文件
-- 原始数值和格式化值
-- 按类别分组输出
+- Read EXIF, IPTC, XMP, and other standard metadata
+- Support for 200+ file formats (JPEG, PNG, RAW, MP4, PDF, etc.)
+- Selective reading of specific tags
+- Batch queries for multiple files
+- Raw values and formatted values
+- Grouped output by category
 
-### 元数据写入
+### Metadata Writing
 
-- 写入任意 ExifTool 支持的标签
-- 删除特定标签
-- 批量写入操作
-- 条件写入（仅在满足条件时修改）
-- 日期时间偏移调整
-- 复制标签（从其他文件复制元数据）
-- 支持备份和覆盖模式
+- Write any tag supported by ExifTool
+- Delete specific tags
+- Batch write operations
+- Conditional writes (only modify when conditions are met)
+- DateTime offset adjustments
+- Copy tags from other files
+- Backup and overwrite modes supported
 
-### 高级功能
+### Advanced Features
 
-- **文件操作**：基于元数据重命名、组织文件
-- **地理信息**：GPS 坐标读写、反向地理编码
-- **二进制数据**：缩略图、预览图提取
-- **格式转换**：多种输出格式（JSON、XML、CSV 等）
-- **校验和**：计算文件校验和（MD5、SHA256 等）
-- **流式处理**：大文件处理支持进度跟踪
-- **错误恢复**：可配置的重试策略
+- **File Operations**: Rename and organize files based on metadata
+- **Geolocation**: GPS coordinate read/write, reverse geocoding
+- **Binary Data**: Thumbnail and preview extraction
+- **Format Conversion**: Multiple output formats (JSON, XML, CSV, etc.)
+- **Checksums**: Calculate file checksums (MD5, SHA256, etc.)
+- **Streaming**: Large file processing with progress tracking
+- **Error Recovery**: Configurable retry strategies
 
-### 性能优化
+### Performance Optimizations
 
-- 连接池支持并发访问
-- LRU 缓存减少重复查询
-- 批量操作优化
-- 流式处理大文件
+- Connection pooling for concurrent access
+- LRU cache to reduce repeated queries
+- Batch operation optimization
+- Streaming for large files
 
-## 安装
+## Installation
 
-### 1. 安装 ExifTool
+### 1. Install ExifTool
 
-在使用本库之前，需要先在系统上安装 ExifTool：
+Before using this library, you need to install ExifTool on your system:
 
 **macOS:**
 ```bash
@@ -78,58 +78,58 @@ sudo apt-get install libimage-exiftool-perl
 ```
 
 **Windows:**
-下载并安装 [Windows 版本](https://exiftool.org/)
+Download and install from [Windows version](https://exiftool.org/)
 
-**验证安装：**
+**Verify Installation:**
 ```bash
 exiftool -ver
 ```
 
-### 2. 添加依赖
+### 2. Add Dependency
 
-在 `Cargo.toml` 中添加：
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 exiftool-rs-wrapper = "0.1.0"
 
-# 启用异步支持（可选）
+# Enable async support (optional)
 exiftool-rs-wrapper = { version = "0.1.0", features = ["async"] }
 ```
 
-## 快速开始
+## Quick Start
 
-### 基本示例
+### Basic Example
 
 ```rust
 use exiftool_rs_wrapper::ExifTool;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 创建 ExifTool 实例（-stay_open 模式）
+    // Create ExifTool instance (-stay_open mode)
     let exiftool = ExifTool::new()?;
     
-    // 读取文件元数据
+    // Read file metadata
     let metadata = exiftool.query("photo.jpg").execute()?;
     
-    // 访问特定标签
+    // Access specific tags
     if let Some(make) = metadata.get("Make") {
-        println!("相机制造商: {}", make);
+        println!("Camera Make: {}", make);
     }
     
     if let Some(model) = metadata.get("Model") {
-        println!("相机型号: {}", model);
+        println!("Camera Model: {}", model);
     }
     
-    // 获取图像尺寸
+    // Get image dimensions
     let width: i64 = exiftool.read_tag("photo.jpg", "ImageWidth")?;
     let height: i64 = exiftool.read_tag("photo.jpg", "ImageHeight")?;
-    println!("图像尺寸: {} x {}", width, height);
+    println!("Image Size: {} x {}", width, height);
     
     Ok(())
 }
 ```
 
-### 写入元数据
+### Writing Metadata
 
 ```rust
 use exiftool_rs_wrapper::ExifTool;
@@ -137,19 +137,19 @@ use exiftool_rs_wrapper::ExifTool;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 基本写入（创建备份）
+    // Basic write (creates backup)
     exiftool.write("photo.jpg")
         .tag("Copyright", "© 2026 My Company")
         .tag("Artist", "John Doe")
         .execute()?;
     
-    // 覆盖原始文件（不创建备份）
+    // Overwrite original file (no backup)
     exiftool.write("photo.jpg")
         .tag("Comment", "Processed with Rust")
         .overwrite_original(true)
         .execute()?;
     
-    // 删除标签
+    // Delete tags
     exiftool.write("photo.jpg")
         .delete("GPSPosition")
         .overwrite_original(true)
@@ -159,7 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 批量处理
+### Batch Processing
 
 ```rust
 use exiftool_rs_wrapper::ExifTool;
@@ -169,7 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let paths = vec!["photo1.jpg", "photo2.jpg", "photo3.jpg"];
     
-    // 批量查询
+    // Batch query
     let results = exiftool.query_batch(&paths)
         .tag("FileName")
         .tag("ImageSize")
@@ -184,9 +184,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## 详细 API 使用示例
+## Detailed API Usage Examples
 
-### 使用标签常量（类型安全）
+### Using Tag Constants (Type Safety)
 
 ```rust
 use exiftool_rs_wrapper::{ExifTool, TagId};
@@ -194,14 +194,14 @@ use exiftool_rs_wrapper::{ExifTool, TagId};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 使用 TagId 常量替代字符串
+    // Use TagId constants instead of strings
     let make: String = exiftool.read_tag("photo.jpg", TagId::MAKE)?;
     let model: String = exiftool.read_tag("photo.jpg", TagId::MODEL)?;
     let iso: i64 = exiftool.read_tag("photo.jpg", TagId::ISO)?;
     
     println!("{} {} @ ISO {}", make, model, iso);
     
-    // 写入时使用 TagId
+    // Write using TagId
     exiftool.write("photo.jpg")
         .tag_id(TagId::COPYRIGHT, "© 2026")
         .tag_id(TagId::ARTIST, "Photographer")
@@ -212,7 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 高级查询选项
+### Advanced Query Options
 
 ```rust
 use exiftool_rs_wrapper::ExifTool;
@@ -220,24 +220,24 @@ use exiftool_rs_wrapper::ExifTool;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 高级查询配置
+    // Advanced query configuration
     let metadata = exiftool.query("photo.jpg")
-        .include_unknown(true)          // 包含未知标签
-        .include_duplicates(true)       // 包含重复标签
-        .raw_values(true)               // 返回原始数值
-        .group_by_category(true)        // 按类别分组
-        .tag("Make")                     // 只查询特定标签
+        .include_unknown(true)          // Include unknown tags
+        .include_duplicates(true)       // Include duplicate tags
+        .raw_values(true)               // Return raw values
+        .group_by_category(true)        // Group by category
+        .tag("Make")                     // Query only specific tags
         .tag("Model")
         .tag("DateTimeOriginal")
-        .exclude("MakerNotes")           // 排除特定标签
+        .exclude("MakerNotes")           // Exclude specific tags
         .execute()?;
     
-    // 输出为 JSON
+    // Output as JSON
     let json = exiftool.query("photo.jpg")
         .execute_json()?;
     println!("{}", serde_json::to_string_pretty(&json)?);
     
-    // 反序列化为自定义类型
+    // Deserialize to custom type
     #[derive(serde::Deserialize)]
     struct PhotoInfo {
         #[serde(rename = "FileName")]
@@ -255,21 +255,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 异步 API
+### Async API
 
 ```rust
 use exiftool_rs_wrapper::async_ext::AsyncExifTool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 创建异步 ExifTool 实例
+    // Create async ExifTool instance
     let exiftool = AsyncExifTool::new()?;
     
-    // 异步查询
+    // Async query
     let metadata = exiftool.query("photo.jpg").await?;
-    println!("相机: {:?}", metadata.get("Make"));
+    println!("Camera: {:?}", metadata.get("Make"));
     
-    // 异步批量查询
+    // Async batch query
     let paths = vec!["photo1.jpg", "photo2.jpg", "photo3.jpg"];
     let results = exiftool.query_batch(&paths).await?;
     
@@ -277,39 +277,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}: {:?}", path.display(), metadata.get("FileName"));
     }
     
-    // 异步写入
+    // Async write
     exiftool.write_tag("photo.jpg", "Copyright", "© 2026").await?;
     
-    // 异步删除
+    // Async delete
     exiftool.delete_tag("photo.jpg", "GPSPosition").await?;
     
     Ok(())
 }
 ```
 
-### 连接池（高并发）
+### Connection Pool (High Concurrency)
 
 ```rust
 use exiftool_rs_wrapper::pool::ExifToolPool;
 use std::thread;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 创建包含 4 个连接的连接池
+    // Create connection pool with 4 connections
     let pool = ExifToolPool::new(4)?;
     let pool_clone = pool.clone();
     
-    // 在多个线程中使用连接池
+    // Use pool in multiple threads
     let handles: Vec<_> = (0..8).map(|i| {
         let pool = pool_clone.clone();
         thread::spawn(move || {
-            // 从池中获取连接
+            // Acquire connection from pool
             let conn = pool.acquire()?;
             let exiftool = conn.get().unwrap();
             
             let metadata = exiftool.query(format!("photo{}.jpg", i))
                 .execute()?;
             
-            println!("线程 {}: 处理完成", i);
+            println!("Thread {}: Processing complete", i);
             Ok::<(), exiftool_rs_wrapper::Error>(())
         })
     }).collect();
@@ -322,7 +322,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 文件组织和重命名
+### File Organization and Renaming
 
 ```rust
 use exiftool_rs_wrapper::{
@@ -333,13 +333,13 @@ use exiftool_rs_wrapper::{
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 基于日期时间重命名文件
+    // Rename based on DateTime
     exiftool.rename_by_pattern(
         "photo.jpg",
         RenamePattern::datetime("%Y%m%d_%H%M%S"),
     )?;
     
-    // 基于相机型号重命名
+    // Rename based on camera model
     exiftool.rename_by_pattern(
         "photo.jpg",
         RenamePattern::tag_with_suffix(
@@ -348,11 +348,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     )?;
     
-    // 组织文件到目录结构
+    // Organize files into directory structure
     use exiftool_rs_wrapper::file_ops::OrganizeOptions;
     
     let options = OrganizeOptions::new("/output/directory")
-        .subdir(RenamePattern::datetime("%Y/%m"))  // 按年月创建子目录
+        .subdir(RenamePattern::datetime("%Y/%m"))  // Create subdirs by year/month
         .filename(RenamePattern::datetime("%Y%m%d_%H%M%S"))
         .extension("jpg");
     
@@ -362,7 +362,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 地理信息处理
+### Geolocation Processing
 
 ```rust
 use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations};
@@ -370,14 +370,14 @@ use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 读取 GPS 坐标
+    // Read GPS coordinates
     if let Some(coord) = exiftool.get_gps_coordinates("photo.jpg")? {
-        println!("纬度: {}", coord.latitude);
-        println!("经度: {}", coord.longitude);
-        println!("海拔: {:?}", coord.altitude);
+        println!("Latitude: {}", coord.latitude);
+        println!("Longitude: {}", coord.longitude);
+        println!("Altitude: {:?}", coord.altitude);
     }
     
-    // 写入 GPS 坐标
+    // Write GPS coordinates
     use exiftool_rs_wrapper::geo::GpsCoordinate;
     
     let coord = GpsCoordinate::new(39.9042, 116.4074)
@@ -385,17 +385,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     exiftool.set_gps_coordinates("photo.jpg", &coord)?;
     
-    // 反向地理编码（需要互联网连接）
+    // Reverse geocoding (requires internet connection)
     if let Some(location) = exiftool.reverse_geocode(&coord)? {
-        println!("城市: {}", location.city);
-        println!("国家: {}", location.country);
+        println!("City: {}", location.city);
+        println!("Country: {}", location.country);
     }
     
     Ok(())
 }
 ```
 
-### 错误处理和重试
+### Error Handling and Retries
 
 ```rust
 use exiftool_rs_wrapper::{
@@ -406,24 +406,24 @@ use exiftool_rs_wrapper::{
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 配置重试策略
+    // Configure retry policy
     let policy = RetryPolicy::new()
         .max_attempts(3)
         .initial_delay(std::time::Duration::from_millis(100))
         .exponential_backoff(true);
     
-    // 使用重试执行操作
+    // Execute operation with retry
     let metadata = with_retry_sync(&policy, || {
         exiftool.query("photo.jpg").execute()
     })?;
     
-    println!("成功读取元数据: {:?}", metadata.get("FileName"));
+    println!("Successfully read metadata: {:?}", metadata.get("FileName"));
     
     Ok(())
 }
 ```
 
-### 流式处理和进度跟踪
+### Streaming and Progress Tracking
 
 ```rust
 use exiftool_rs_wrapper::{
@@ -434,132 +434,131 @@ use exiftool_rs_wrapper::{
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
-    // 定义进度回调
+    // Define progress callback
     let on_progress = |processed: usize, total: usize, current: &str| {
         let percent = (processed as f64 / total as f64) * 100.0;
-        println!("进度: {:.1}% ({}/{}): {}", percent, processed, total, current);
+        println!("Progress: {:.1}% ({}/{}): {}", percent, processed, total, current);
     };
     
     let options = StreamOptions::new()
-        .chunk_size(1024 * 1024)  // 1MB 分块
+        .chunk_size(1024 * 1024)  // 1MB chunks
         .progress_callback(on_progress);
     
-    // 流式处理大文件
+    // Stream process large file
     let metadata = exiftool.stream_query("large_video.mp4", &options)?;
     
     Ok(())
 }
 ```
 
-## 性能基准测试
+## Performance Benchmarks
 
-以下是在典型硬件配置上的性能测试结果（仅供参考）：
+Performance test results on typical hardware (for reference only):
 
-| 操作 | 单线程 | 连接池(4) | 异步 |
-|------|--------|-----------|------|
-| 读取单个 JPEG 文件 | ~5ms | - | ~5ms |
-| 批量读取 100 个文件 | 450ms | 120ms | 110ms |
-| 写入单个标签 | ~15ms | - | ~15ms |
-| 批量写入 100 个文件 | 1.5s | 450ms | 420ms |
+| Operation | Single Thread | Pool(4) | Async |
+|-----------|---------------|---------|-------|
+| Read single JPEG | ~5ms | - | ~5ms |
+| Batch read 100 files | 450ms | 120ms | 110ms |
+| Write single tag | ~15ms | - | ~15ms |
+| Batch write 100 files | 1.5s | 450ms | 420ms |
 
-### 优化建议
+### Optimization Tips
 
-1. **使用连接池**：在高并发场景下，连接池可以显著提升性能
-2. **批量操作**：尽量使用批量 API 而非单个文件循环
-3. **选择性查询**：只查询需要的标签，避免读取完整元数据
-4. **启用缓存**：对于重复查询，使用内置 LRU 缓存
+1. **Use Connection Pool**: Connection pooling significantly improves performance in high-concurrency scenarios
+2. **Batch Operations**: Use batch APIs instead of looping single files
+3. **Selective Queries**: Only query needed tags, avoid reading full metadata
+4. **Enable Caching**: Use built-in LRU cache for repeated queries
 
-## 命令行工具
+## Command Line Tool
 
-本项目还提供了一个命令行工具：
+This project also provides a command-line tool:
 
 ```bash
-# 安装命令行工具
+# Install CLI tool
 cargo install exiftool-rs-wrapper
 
-# 读取文件元数据
+# Read file metadata
 exiftool-rs-wrapper read photo.jpg
 
-# 写入标签
+# Write tags
 exiftool-rs-wrapper write photo.jpg Copyright "© 2026"
 
-# 删除标签
+# Delete tags
 exiftool-rs-wrapper delete photo.jpg GPSPosition
 
-# 批量处理
+# Batch processing
 exiftool-rs-wrapper batch --input-dir ./photos --output-dir ./organized
 
-# 查看版本
+# View version
 exiftool-rs-wrapper version
 
-# 列出支持的标签
+# List supported tags
 exiftool-rs-wrapper list-tags
 ```
 
-## 贡献指南
+## Contributing
 
-我们欢迎所有形式的贡献！请遵循以下步骤：
+We welcome all forms of contributions! Please follow these steps:
 
-### 提交 Issue
+### Submitting Issues
 
-- 报告 Bug 时，请提供详细的复现步骤和环境信息
-- 请求新功能时，请描述使用场景和预期行为
-- 在提交前请先搜索是否已有相关 Issue
+- When reporting bugs, please provide detailed reproduction steps and environment information
+- When requesting features, describe the use case and expected behavior
+- Search for existing issues before submitting
 
-### 提交 Pull Request
+### Submitting Pull Requests
 
-1. Fork 本仓库
-2. 创建功能分支：`git checkout -b feature/amazing-feature`
-3. 提交更改：`git commit -m 'Add amazing feature'`
-4. 推送分支：`git push origin feature/amazing-feature`
-5. 提交 Pull Request
+1. Fork this repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push branch: `git push origin feature/amazing-feature`
+5. Submit Pull Request
 
-### 开发环境
+### Development Environment
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/openappsys/exiftool-rs-wrapper.git
 cd exiftool-rs-wrapper
 
-# 构建项目
+# Build project
 cargo build --release
 
-# 运行测试
+# Run tests
 cargo test
 cargo test --lib
 
-# 代码检查
+# Code check
 cargo clippy --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-### 代码规范
+### Code Standards
 
-- 所有代码注释必须使用中文
-- 遵循 Rust API Guidelines
-- 确保通过 `cargo clippy` 和 `cargo fmt` 检查
-- 为新功能添加测试
-- 更新相关文档
+- Follow Rust API Guidelines
+- Ensure passing `cargo clippy` and `cargo fmt` checks
+- Add tests for new features
+- Update relevant documentation
 
-## 许可证
+## License
 
-本项目采用 MIT 或 Apache-2.0 双许可证，您可以选择任一许可证使用本项目。
+This project is dual-licensed under MIT OR Apache-2.0. You may choose either license.
 
-- MIT License: 参见 [LICENSE](LICENSE) 文件
-- Apache-2.0 License: 参见 [LICENSE-APACHE](LICENSE-APACHE) 文件（如有）
+- MIT License: See [LICENSE](LICENSE) file
+- Apache-2.0 License: See [LICENSE-APACHE](LICENSE-APACHE) file (if available)
 
-## 致谢
+## Acknowledgments
 
-- [ExifTool](https://exiftool.org/) by Phil Harvey - 强大的元数据处理工具
-- Rust 社区 - 优秀的语言和生态系统
+- [ExifTool](https://exiftool.org/) by Phil Harvey - Powerful metadata processing tool
+- Rust Community - Excellent language and ecosystem
 
-## 相关链接
+## Related Links
 
-- [文档](https://docs.rs/exiftool-rs-wrapper)
+- [Documentation](https://docs.rs/exiftool-rs-wrapper)
 - [Crates.io](https://crates.io/crates/exiftool-rs-wrapper)
-- [GitHub 仓库](https://github.com/openappsys/exiftool-rs-wrapper)
-- [问题反馈](https://github.com/openappsys/exiftool-rs-wrapper/issues)
+- [GitHub Repository](https://github.com/openappsys/exiftool-rs-wrapper)
+- [Issue Tracker](https://github.com/openappsys/exiftool-rs-wrapper/issues)
 
 ---
 
-**注意**：本库需要系统中已安装 ExifTool。ExifTool 是 Phil Harvey 开发的独立软件，拥有其自己的许可证。
+**Note**: This library requires ExifTool to be installed on the system. ExifTool is independent software developed by Phil Harvey with its own license.
