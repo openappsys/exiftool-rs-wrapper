@@ -78,9 +78,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => {
             println!("   ✅ 日期时间偏移成功");
 
-            match exiftool.read_tag::<String, _, _>(&test_copy, TagId::DATE_TIME_ORIGINAL.name()) {
-                Ok(new_date) => println!("      最终 DateTimeOriginal: {}", new_date),
-                Err(_) => {}
+            if let Ok(new_date) =
+                exiftool.read_tag::<String, _, _>(&test_copy, TagId::DATE_TIME_ORIGINAL.name())
+            {
+                println!("      最终 DateTimeOriginal: {}", new_date);
             }
         }
         Err(e) => eprintln!("   ❌ 偏移失败: {}", e),
@@ -290,9 +291,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("   ✅ 字符串追加成功");
 
                     // 验证
-                    match exiftool.read_tag::<String, _, _>(&test_copy3, TagId::COPYRIGHT.name()) {
-                        Ok(value) => println!("      最终值: {}", value),
-                        Err(_) => {}
+                    if let Ok(value) =
+                        exiftool.read_tag::<String, _, _>(&test_copy3, TagId::COPYRIGHT.name())
+                    {
+                        println!("      最终值: {}", value)
                     }
                 }
                 Err(e) => eprintln!("   ❌ 追加失败: {}", e),
@@ -311,11 +313,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut cleaned = 0;
 
     for file in test_files {
-        if file.exists() && file != image_path {
-            match std::fs::remove_file(&file) {
-                Ok(_) => cleaned += 1,
-                Err(_) => {}
-            }
+        if file.exists() && file != image_path && std::fs::remove_file(&file).is_ok() {
+            cleaned += 1;
         }
     }
 
@@ -370,13 +369,7 @@ fn find_test_image() -> Option<PathBuf> {
         PathBuf::from("test.jpg"),
     ];
 
-    for path in paths {
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
+    paths.into_iter().find(|path| path.exists())
 }
 
 /// 创建测试副本
