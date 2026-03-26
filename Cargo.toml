@@ -19,6 +19,7 @@ base64 = "0.22"
 tokio = { version = "1.0", features = ["sync", "rt"], optional = true }
 futures = { version = "0.3", optional = true }
 tempfile = "3.27"
+lru = "0.12"
 
 [features]
 default = []
