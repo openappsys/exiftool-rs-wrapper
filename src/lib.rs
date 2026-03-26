@@ -35,7 +35,9 @@
 // 模块声明
 mod binary;
 mod error;
+mod file_ops;
 mod format;
+mod geo;
 mod pool;
 mod process;
 mod query;
@@ -65,6 +67,12 @@ pub use pool::{ExifToolPool, PoolConnection, batch_with_pool, with_pool};
 
 // 格式化输出
 pub use format::{FormatOperations, FormattedOutput, OutputFormat, ReadOptions};
+
+// 文件操作
+pub use file_ops::{FileOperations, OrganizeOptions, RenamePattern};
+
+// 地理信息
+pub use geo::{GeoOperations, GeocodeResult, GpsCoordinate};
 
 #[cfg(feature = "async")]
 pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
