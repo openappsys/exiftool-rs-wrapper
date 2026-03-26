@@ -146,6 +146,7 @@ pub trait ConfigOperations {
 #[derive(Debug, Clone)]
 pub struct ConfigLoader {
     config_path: Option<PathBuf>,
+    #[allow(dead_code)]
     custom_tags: Vec<CustomTag>,
 }
 
@@ -204,16 +205,19 @@ impl ConfigLoader {
         Ok(())
     }
 
+    #[allow(dead_code)]
     /// 添加自定义标签
     pub fn add_custom_tag(&mut self, tag: CustomTag) {
         self.custom_tags.push(tag);
     }
 
+    #[allow(dead_code)]
     /// 获取自定义标签
     pub fn custom_tags(&self) -> &[CustomTag] {
         &self.custom_tags
     }
 
+    #[allow(dead_code)]
     /// 获取配置文件路径
     pub fn config_path(&self) -> Option<&Path> {
         self.config_path.as_deref()
@@ -222,6 +226,7 @@ impl ConfigLoader {
 
 /// 自定义标签定义
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CustomTag {
     /// 标签 ID（十六进制）
     pub id: String,
@@ -240,10 +245,15 @@ pub struct CustomTag {
 /// 标签数据类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TagDataType {
+    #[allow(dead_code)]
     String,
+    #[allow(dead_code)]
     Integer,
+    #[allow(dead_code)]
     Rational,
+    #[allow(dead_code)]
     Binary,
+    #[allow(dead_code)]
     Undefined,
 }
 
