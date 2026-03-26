@@ -31,9 +31,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: 安装依赖
-        uses: ryankurte/action-apt@v1
-        with:
-          packages: libimage-exiftool-perl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libimage-exiftool-perl
 
       - name: 缓存 Cargo
         uses: Swatinem/rust-cache@v2
