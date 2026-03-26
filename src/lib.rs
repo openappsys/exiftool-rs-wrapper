@@ -34,6 +34,7 @@
 
 // 模块声明
 mod binary;
+mod config;
 mod error;
 mod file_ops;
 mod format;
@@ -41,6 +42,7 @@ mod geo;
 mod pool;
 mod process;
 mod query;
+mod stream;
 mod types;
 mod write;
 
@@ -73,6 +75,18 @@ pub use file_ops::{FileOperations, OrganizeOptions, RenamePattern};
 
 // 地理信息
 pub use geo::{GeoOperations, GeocodeResult, GpsCoordinate};
+
+// 配置和校验
+pub use config::{
+    ChecksumAlgorithm, ChecksumResult, ConfigOperations, DiffResult, HexDumpOperations,
+    HexDumpOptions, VerboseOperations, VerboseOptions,
+};
+
+// 流式处理和性能优化
+pub use stream::{
+    Cache, PerformanceStats, ProgressCallback, ProgressReader, ProgressTracker, StreamOptions,
+    StreamingOperations,
+};
 
 #[cfg(feature = "async")]
 pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
