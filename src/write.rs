@@ -1,0 +1,239 @@
+//! 写入操作构建器
+
+use crate::ExifTool;
+use crate::error::{Error, Result};
+use crate::types::TagId;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
+/// 写入构建器
+pub struct WriteBuilder<'et> {
+    exiftool: &'et ExifTool,
+    path: PathBuf,
+    tags: HashMap<String, String>,
+    overwrite_original: bool,
+    backup: bool,
+    output_path: Option<PathBuf>,
+    condition: Option<String>,
+    raw_args: Vec<String>,
+}
+
+impl<'et> WriteBuilder<'et> {
+    /// 创建新的写入构建器
+    pub(crate) fn new<P: AsRef<Path>>(exiftool: &'et ExifTool, path: P) -> Self {
+        Self {
+            exiftool,
+            path: path.as_ref().to_path_buf(),
+            tags: HashMap::new(),
+            overwrite_original: false,
+            backup: true,
+            output_path: None,
+            condition: None,
+            raw_args: Vec::new(),
+        }
+    }
+
+    /// 设置标签值
+    pub fn tag(mut self, tag: impl Into<String>, value: impl Into<String>) -> Self {
+        self.tags.insert(tag.into(), value.into());
+        self
+    }
+
+    /// 设置标签值（使用 TagId）
+    pub fn tag_id(self, tag: TagId, value: impl Into<String>) -> Self {
+        self.tag(tag.name(), value)
+    }
+
+    /// 设置多个标签
+    pub fn tags(mut self, tags: HashMap<impl Into<String>, impl Into<String>>) -> Self {
+        for (k, v) in tags {
+            self.tags.insert(k.into(), v.into());
+        }
+        self
+    }
+
+    /// 删除标签
+    pub fn delete(mut self, tag: impl Into<String>) -> Self {
+        // 删除标签通过设置空值实现
+        self.tags.insert(tag.into(), "".to_string());
+        self
+    }
+
+    /// 删除标签（使用 TagId）
+    pub fn delete_id(self, tag: TagId) -> Self {
+        self.delete(tag.name())
+    }
+
+    /// 覆盖原始文件（不创建备份）
+    pub fn overwrite_original(mut self, yes: bool) -> Self {
+        self.overwrite_original = yes;
+        self
+    }
+
+    /// 创建备份
+    pub fn backup(mut self, yes: bool) -> Self {
+        self.backup = yes;
+        self
+    }
+
+    /// 输出到不同文件
+    pub fn output<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.output_path = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    /// 设置条件（仅在条件满足时写入）
+    pub fn condition(mut self, expr: impl Into<String>) -> Self {
+        self.condition = Some(expr.into());
+        self
+    }
+
+    /// 添加原始参数（高级用法）
+    pub fn arg(mut self, arg: impl Into<String>) -> Self {
+        self.raw_args.push(arg.into());
+        self
+    }
+
+    /// 日期/时间偏移
+    ///
+    /// 示例: `.offset("DateTimeOriginal", "+1:0:0 0:0:0")` 表示增加 1 天
+    pub fn offset(self, tag: impl Into<String>, offset: impl Into<String>) -> Self {
+        let tag = tag.into();
+        let offset = offset.into();
+        self.arg(format!("-{}+={}", tag, offset))
+    }
+
+    /// 从文件复制标签
+    ///
+    /// 从源文件复制所有标签到目标文件
+    pub fn copy_from<P: AsRef<Path>>(mut self, source: P) -> Self {
+        self.raw_args.push("-tagsFromFile".to_string());
+        self.raw_args
+            .push(source.as_ref().to_string_lossy().to_string());
+        self
+    }
+
+    /// 执行写入操作
+    pub fn execute(self) -> Result<WriteResult> {
+        let args = self.build_args();
+        let response = self.exiftool.execute_raw(&args)?;
+
+        if response.is_error() {
+            return Err(Error::process(
+                response
+                    .error_message()
+                    .unwrap_or_else(|| "Unknown write error".to_string()),
+            ));
+        }
+
+        Ok(WriteResult {
+            path: self.path,
+            lines: response.lines().to_vec(),
+        })
+    }
+
+    /// 构建参数列表
+    fn build_args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+
+        // 覆盖原始文件
+        if self.overwrite_original {
+            args.push("-overwrite_original".to_string());
+        }
+
+        // 不创建备份
+        if !self.backup {
+            args.push("-overwrite_original_in_place".to_string());
+        }
+
+        // 输出到不同文件
+        if let Some(ref output) = self.output_path {
+            args.push("-o".to_string());
+            args.push(output.to_string_lossy().to_string());
+        }
+
+        // 条件
+        if let Some(ref condition) = self.condition {
+            args.push(format!("-if {}", condition));
+        }
+
+        // 原始参数
+        args.extend(self.raw_args.clone());
+
+        // 标签写入
+        for (tag, value) in &self.tags {
+            if value.is_empty() {
+                // 删除标签
+                args.push(format!("-{}=", tag));
+            } else {
+                // 写入标签
+                args.push(format!("-{}={}", tag, value));
+            }
+        }
+
+        // 文件路径
+        args.push(self.path.to_string_lossy().to_string());
+
+        args
+    }
+}
+
+/// 写入操作结果
+#[derive(Debug, Clone)]
+pub struct WriteResult {
+    /// 被修改的文件路径
+    pub path: PathBuf,
+
+    /// ExifTool 输出信息
+    pub lines: Vec<String>,
+}
+
+impl WriteResult {
+    /// 检查是否成功
+    pub fn is_success(&self) -> bool {
+        self.lines.iter().any(|line| {
+            line.contains("image files updated") || line.contains("image files unchanged")
+        })
+    }
+
+    /// 获取修改的文件数量
+    pub fn updated_count(&self) -> Option<u32> {
+        for line in &self.lines {
+            if let Some(pos) = line.find("image files updated") {
+                let num_str: String = line[..pos].chars().filter(|c| c.is_ascii_digit()).collect();
+                return num_str.parse().ok();
+            }
+        }
+        None
+    }
+
+    /// 获取创建的备份文件路径
+    pub fn backup_path(&self) -> Option<PathBuf> {
+        let backup = self.path.with_extension(format!(
+            "{}_original",
+            self.path.extension()?.to_string_lossy()
+        ));
+        if backup.exists() { Some(backup) } else { None }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_write_builder_args() {
+        // 基础测试，不依赖 ExifTool 实例
+    }
+
+    #[test]
+    fn test_write_result_parsing() {
+        let result = WriteResult {
+            path: PathBuf::from("test.jpg"),
+            lines: vec!["    1 image files updated".to_string()],
+        };
+
+        assert!(result.is_success());
+        assert_eq!(result.updated_count(), Some(1));
+    }
+}

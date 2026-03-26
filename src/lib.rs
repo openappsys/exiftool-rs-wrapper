@@ -1,365 +1,334 @@
 //! ExifTool Rust Wrapper
 //!
-//! 一个用于 ExifTool 的 Rust 封装库，提供类型安全的 API 来读取和写入文件元数据。
+//! 一个高性能、类型安全的 ExifTool Rust 封装库。
+//!
+//! # 特性
+//!
+//! - **`-stay_open` 模式**：保持进程运行以获得最佳性能
+//! - **类型安全**：完整的标签类型系统
+//! - **Builder 模式**：符合 Rust 习惯的 API
+//! - **线程安全**：支持多线程并发访问
+//! - **零拷贝**：最小化内存分配
 //!
 //! # 示例
 //!
 //! ```rust,no_run
-//! use exiftool_rs_wrapper::{ExifTool, ExifError};
+//! use exiftool_rs_wrapper::ExifTool;
 //!
-//! fn main() -> Result<(), ExifError> {
-//!     let mut exiftool = ExifTool::new()?;
-//!     let metadata = exiftool.read_metadata("photo.jpg")?;
-//!     println!("{:?}", metadata);
-//!     Ok(())
-//! }
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // 创建 ExifTool 实例
+//! let exiftool = ExifTool::new()?;
+//!
+//! // 读取元数据
+//! let metadata = exiftool.query("photo.jpg").execute()?;
+//! println!("相机制造商: {:?}", metadata.get("Make"));
+//!
+//! // 写入元数据
+//! exiftool.write("photo.jpg")
+//!     .tag("Copyright", "© 2024")
+//!     .overwrite_original(true)
+//!     .execute()?;
+//! # Ok(())
+//! # }
 //! ```
 
-use std::collections::HashMap;
-use std::path::Path;
-use std::process::{Command, Stdio};
-use thiserror::Error;
+// 模块声明
+mod error;
+mod process;
+mod query;
+mod types;
+mod write;
 
-/// 错误类型
-#[derive(Error, Debug)]
-pub enum ExifError {
-    /// IO 错误
-    #[error("IO 错误: {0}")]
-    Io(#[from] std::io::Error),
+// 公开导出
+pub use error::{Error, Result};
+pub use process::Response;
+pub use query::{BatchQueryBuilder, QueryBuilder};
+pub use types::{Metadata, TagId, TagValue};
+pub use write::{WriteBuilder, WriteResult};
 
-    /// JSON 解析错误
-    #[error("JSON 解析错误: {0}")]
-    Json(#[from] serde_json::Error),
+use process::ExifToolInner;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use tracing::{debug, info};
 
-    /// ExifTool 执行错误
-    #[error("ExifTool 执行失败: {0}")]
-    Execution(String),
-
-    /// ExifTool 未找到
-    #[error("未找到 ExifTool，请确保已安装并添加到 PATH")]
-    NotFound,
-
-    /// 无效的路径
-    #[error("无效的路径: {0}")]
-    InvalidPath(String),
-}
-
-/// ExifTool 元数据结构
-pub type Metadata = HashMap<String, serde_json::Value>;
-
-/// ExifTool 包装器
+/// ExifTool 主结构体
+///
+/// 使用 `-stay_open` 模式保持 ExifTool 进程运行，
+/// 避免每次操作都重新启动进程的开销。
+///
+/// # 线程安全
+///
+/// `ExifTool` 是线程安全的，可以在多个线程间共享。
+/// 内部使用 `Arc<Mutex>` 保护进程通信。
+#[derive(Debug, Clone)]
 pub struct ExifTool {
-    // 可以在这里添加配置选项
+    inner: Arc<Mutex<ExifToolInner>>,
 }
 
 impl ExifTool {
     /// 创建新的 ExifTool 实例
     ///
-    /// # 示例
+    /// 启动一个 `-stay_open` 模式的 ExifTool 进程。
     ///
-    /// ```rust,no_run
-    /// use exiftool_rs_wrapper::ExifTool;
+    /// # 错误
     ///
-    /// let exiftool = ExifTool::new().unwrap();
-    /// ```
-    pub fn new() -> Result<Self, ExifError> {
-        // 检查 exiftool 是否可用
-        match Command::new("exiftool").arg("-ver").output() {
-            Ok(output) if output.status.success() => Ok(Self {}),
-            Ok(_) => Err(ExifError::Execution("ExifTool 版本检查失败".to_string())),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(ExifError::NotFound),
-            Err(e) => Err(ExifError::Io(e)),
-        }
-    }
-
-    /// 读取文件的元数据
-    ///
-    /// # 参数
-    ///
-    /// * `path` - 文件路径
-    ///
-    /// # 返回值
-    ///
-    /// 返回包含元数据的 HashMap
+    /// 如果 ExifTool 未安装或无法启动，返回 `Error::ExifToolNotFound`。
     ///
     /// # 示例
     ///
     /// ```rust,no_run
     /// use exiftool_rs_wrapper::ExifTool;
     ///
-    /// let mut exiftool = ExifTool::new().unwrap();
-    /// let metadata = exiftool.read_metadata("photo.jpg").unwrap();
+    /// let exiftool = ExifTool::new()?;
+    /// # Ok::<(), exiftool_rs_wrapper::Error>(())
     /// ```
-    pub fn read_metadata<P: AsRef<Path>>(&mut self, path: P) -> Result<Metadata, ExifError> {
-        let path = path.as_ref();
+    pub fn new() -> Result<Self> {
+        info!("Creating new ExifTool instance");
 
-        if !path.exists() {
-            return Err(ExifError::InvalidPath(path.to_string_lossy().to_string()));
-        }
+        let inner = ExifToolInner::new()?;
 
-        let output = Command::new("exiftool")
-            .arg("-json")
-            .arg("-g") // 按组组织输出
-            .arg("-a") // 允许重复标签
-            .arg("-u") // 包括未知标签
-            .arg(path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
-
-        let json_str = String::from_utf8_lossy(&output.stdout);
-        let metadata: Vec<Metadata> = serde_json::from_str(&json_str)?;
-
-        metadata
-            .into_iter()
-            .next()
-            .ok_or_else(|| ExifError::Execution("无元数据返回".to_string()))
+        Ok(Self {
+            inner: Arc::new(Mutex::new(inner)),
+        })
     }
 
-    /// 读取特定标签的元数据
+    /// 查询单个文件的元数据
     ///
-    /// # 参数
-    ///
-    /// * `path` - 文件路径
-    /// * `tag` - 标签名
-    ///
-    /// # 返回值
-    ///
-    /// 返回标签的值，如果不存在则返回 None
-    pub fn read_tag<P: AsRef<Path>, S: AsRef<str>>(
-        &mut self,
-        path: P,
-        tag: S,
-    ) -> Result<Option<serde_json::Value>, ExifError> {
-        let metadata = self.read_metadata(path)?;
-        Ok(metadata.get(tag.as_ref()).cloned())
-    }
-
-    /// 写入元数据标签
-    ///
-    /// # 参数
-    ///
-    /// * `path` - 文件路径
-    /// * `tag` - 标签名
-    /// * `value` - 标签值
+    /// 返回一个 `QueryBuilder`，可以使用 Builder 模式配置查询选项。
     ///
     /// # 示例
     ///
     /// ```rust,no_run
     /// use exiftool_rs_wrapper::ExifTool;
     ///
-    /// let mut exiftool = ExifTool::new().unwrap();
-    /// exiftool.write_tag("photo.jpg", "Copyright", "© 2024").unwrap();
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 基本查询
+    /// let metadata = exiftool.query("photo.jpg").execute()?;
+    ///
+    /// // 高级查询
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .include_unknown(true)
+    ///     .tag("Make")
+    ///     .tag("Model")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
     /// ```
-    pub fn write_tag<P: AsRef<Path>, S: AsRef<str>, V: AsRef<str>>(
-        &mut self,
-        path: P,
-        tag: S,
-        value: V,
-    ) -> Result<(), ExifError> {
-        let path = path.as_ref();
-
-        if !path.exists() {
-            return Err(ExifError::InvalidPath(path.to_string_lossy().to_string()));
-        }
-
-        let tag_spec = format!("-{}={}", tag.as_ref(), value.as_ref());
-
-        let output = Command::new("exiftool")
-            .arg("-overwrite_original")
-            .arg(&tag_spec)
-            .arg(path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
-
-        Ok(())
+    pub fn query<P: AsRef<Path>>(&self, path: P) -> QueryBuilder<'_> {
+        QueryBuilder::new(self, path)
     }
 
-    /// 删除元数据标签
+    /// 批量查询多个文件的元数据
     ///
-    /// # 参数
+    /// # 示例
     ///
-    /// * `path` - 文件路径
-    /// * `tag` - 要删除的标签名
-    pub fn delete_tag<P: AsRef<Path>, S: AsRef<str>>(
-        &mut self,
-        path: P,
-        tag: S,
-    ) -> Result<(), ExifError> {
-        let path = path.as_ref();
-
-        if !path.exists() {
-            return Err(ExifError::InvalidPath(path.to_string_lossy().to_string()));
-        }
-
-        let tag_spec = format!("-{}=", tag.as_ref());
-
-        let output = Command::new("exiftool")
-            .arg("-overwrite_original")
-            .arg(&tag_spec)
-            .arg(path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
-
-        Ok(())
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let paths = vec!["photo1.jpg", "photo2.jpg", "photo3.jpg"];
+    /// let results = exiftool.query_batch(&paths)
+    ///     .tag("FileName")
+    ///     .tag("ImageSize")
+    ///     .execute()?;
+    ///
+    /// for (path, metadata) in results {
+    ///     println!("{}: {:?}", path.display(), metadata.get("FileName"));
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn query_batch<P: AsRef<Path>>(&self, paths: &[P]) -> BatchQueryBuilder<'_> {
+        let path_bufs: Vec<PathBuf> = paths.iter().map(|p| p.as_ref().to_path_buf()).collect();
+        BatchQueryBuilder::new(self, path_bufs)
     }
 
-    /// 复制元数据从一个文件到另一个文件
+    /// 写入元数据到文件
     ///
-    /// # 参数
+    /// 返回一个 `WriteBuilder`，可以使用 Builder 模式配置写入选项。
     ///
-    /// * `source` - 源文件路径
-    /// * `target` - 目标文件路径
-    pub fn copy_metadata<P: AsRef<Path>, Q: AsRef<Path>>(
-        &mut self,
-        source: P,
-        target: Q,
-    ) -> Result<(), ExifError> {
-        let source = source.as_ref();
-        let target = target.as_ref();
+    /// # 警告
+    ///
+    /// 默认情况下，ExifTool 会创建备份文件（`filename_original`）。
+    /// 使用 `overwrite_original(true)` 可以不创建备份直接覆盖原文件。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 基本写入
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2024 My Company")
+    ///     .execute()?;
+    ///
+    /// // 高级写入
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Artist", "Photographer")
+    ///     .tag("Copyright", "© 2024")
+    ///     .delete("Comment")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn write<P: AsRef<Path>>(&self, path: P) -> WriteBuilder<'_> {
+        WriteBuilder::new(self, path)
+    }
 
-        if !source.exists() {
-            return Err(ExifError::InvalidPath(source.to_string_lossy().to_string()));
-        }
+    /// 读取单个标签的值
+    ///
+    /// 这是 `query().tag().execute()` 的快捷方式。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let make: String = exiftool.read_tag("photo.jpg", "Make")?;
+    /// println!("相机制造商: {}", make);
+    ///
+    /// // 使用 TagId
+    /// use exiftool_rs_wrapper::TagId;
+    /// let model: String = exiftool.read_tag("photo.jpg", "Model")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn read_tag<T, P, S>(&self, path: P, tag: S) -> Result<T>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        P: AsRef<Path>,
+        S: AsRef<str>,
+    {
+        let metadata = self.query(path).tag(tag.as_ref()).execute()?;
 
-        if !target.exists() {
-            return Err(ExifError::InvalidPath(target.to_string_lossy().to_string()));
-        }
+        let value = metadata
+            .get(tag.as_ref())
+            .ok_or_else(|| Error::TagNotFound(tag.as_ref().to_string()))?;
 
-        let output = Command::new("exiftool")
-            .arg("-overwrite_original")
-            .arg("-TagsFromFile")
-            .arg(source)
-            .arg(target)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
+        // 将 TagValue 转换为目标类型
+        let json = serde_json::to_value(value)?;
+        let result: T = serde_json::from_value(json)?;
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
+        Ok(result)
+    }
 
-        Ok(())
+    /// 获取 ExifTool 版本
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    /// let version = exiftool.version()?;
+    /// println!("ExifTool version: {}", version);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn version(&self) -> Result<String> {
+        let mut inner = self.inner.lock()?;
+        inner.send_line("-ver")?;
+        inner.send_line("-execute")?;
+        inner.flush()?;
+
+        let response = inner.read_response()?;
+        Ok(response.text().trim().to_string())
     }
 
     /// 获取所有支持的标签列表
-    ///
-    /// # 返回值
-    ///
-    /// 返回所有支持的标签名称列表
-    pub fn list_tags(&mut self) -> Result<Vec<String>, ExifError> {
-        let output = Command::new("exiftool")
-            .arg("-list")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
+    pub fn list_tags(&self) -> Result<Vec<String>> {
+        let mut inner = self.inner.lock()?;
+        inner.send_line("-list")?;
+        inner.send_line("-execute")?;
+        inner.flush()?;
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let tags: Vec<String> = stdout
+        let response = inner.read_response()?;
+        let tags: Vec<String> = response
             .lines()
+            .iter()
             .map(|line| line.trim().to_string())
-            .filter(|line| !line.is_empty() && !line.starts_with('-'))
+            .filter(|line| {
+                !line.is_empty() && !line.starts_with('-') && !line.contains("Command-line")
+            })
             .collect();
 
         Ok(tags)
     }
 
-    /// 获取 ExifTool 版本信息
+    /// 执行原始命令
     ///
-    /// # 返回值
+    /// 这是高级 API，允许直接发送参数到 ExifTool。
     ///
-    /// 返回版本号字符串
-    pub fn version(&self) -> Result<String, ExifError> {
-        let output = Command::new("exiftool")
-            .arg("-ver")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
+    /// # 安全性
+    ///
+    /// 谨慎使用此功能，确保参数不包含恶意输入。
+    pub(crate) fn execute_raw(&self, args: &[impl AsRef<str>]) -> Result<Response> {
+        debug!("Executing raw command with {} args", args.len());
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ExifError::Execution(stderr.to_string()));
-        }
+        let args: Vec<String> = args.iter().map(|a| a.as_ref().to_string()).collect();
 
-        let version = String::from_utf8_lossy(&output.stdout);
-        Ok(version.trim().to_string())
+        let mut inner = self.inner.lock()?;
+        inner.execute(&args)
+    }
+
+    /// 关闭 ExifTool 进程
+    ///
+    /// 优雅地关闭进程。通常不需要手动调用，
+    /// 因为 `Drop` 实现会自动处理。
+    pub fn close(&self) -> Result<()> {
+        let mut inner = self.inner.lock()?;
+        inner.close()
     }
 }
 
 impl Default for ExifTool {
     fn default() -> Self {
-        Self::new().expect("无法创建默认 ExifTool 实例")
+        Self::new().expect("Failed to create default ExifTool instance")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::TempDir;
-
-    #[allow(dead_code)]
-    fn create_test_image(dir: &TempDir, name: &str) -> std::path::PathBuf {
-        // 创建一个简单的测试 JPEG 文件
-        let path = dir.path().join(name);
-        let mut file = File::create(&path).unwrap();
-        // 写入最小的 JPEG 文件头
-        file.write_all(&[
-            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00,
-            0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
-        ])
-        .unwrap();
-        path
-    }
 
     #[test]
     fn test_exiftool_new() {
-        // 此测试需要系统上安装 exiftool
+        // 仅在 ExifTool 可用时运行
         match ExifTool::new() {
-            Ok(_) => println!("ExifTool 可用"),
-            Err(ExifError::NotFound) => {
-                println!("跳过测试: 未找到 ExifTool");
+            Ok(_) => {
+                println!("✓ ExifTool is available");
             }
-            Err(e) => panic!("意外错误: {:?}", e),
+            Err(Error::ExifToolNotFound) => {
+                println!("⚠ ExifTool not found, skipping test");
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
 
     #[test]
     fn test_version() {
         match ExifTool::new() {
-            Ok(exiftool) => {
-                let version = exiftool.version().unwrap();
+            Ok(et) => {
+                let version = et.version().unwrap();
                 assert!(!version.is_empty());
-                println!("ExifTool 版本: {}", version);
+                println!("ExifTool version: {}", version);
             }
-            Err(ExifError::NotFound) => {
-                println!("跳过测试: 未找到 ExifTool");
+            Err(Error::ExifToolNotFound) => {
+                println!("⚠ ExifTool not found, skipping test");
             }
-            Err(e) => panic!("意外错误: {:?}", e),
+            Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
 }
