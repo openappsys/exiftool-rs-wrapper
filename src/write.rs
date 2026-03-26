@@ -1,10 +1,32 @@
 //! 写入操作构建器
 
-use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::TagId;
+use crate::ExifTool;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+/// 写入模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteMode {
+    /// w - 写入标签（默认值）
+    Write,
+    /// c - 仅创建标签（不修改现有标签）
+    Create,
+    /// wc - 写入或创建
+    WriteCreate,
+}
+
+impl WriteMode {
+    /// 获取模式字符串
+    fn as_str(&self) -> &'static str {
+        match self {
+            WriteMode::Write => "w",
+            WriteMode::Create => "c",
+            WriteMode::WriteCreate => "wc",
+        }
+    }
+}
 
 /// 写入构建器
 pub struct WriteBuilder<'et> {
@@ -91,6 +113,102 @@ impl<'et> WriteBuilder<'et> {
     /// 添加原始参数（高级用法）
     pub fn arg(mut self, arg: impl Into<String>) -> Self {
         self.raw_args.push(arg.into());
+        self
+    }
+
+    /// 设置写入模式
+    ///
+    /// 使用 `-wm` 选项设置写入/创建标签的模式
+    ///
+    /// # 模式
+    ///
+    /// - `WriteMode::Write` (w) - 写入标签（默认）
+    /// - `WriteMode::Create` (c) - 仅创建标签（不修改现有标签）
+    /// - `WriteMode::WriteCreate` (wc) - 写入或创建
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::{ExifTool, WriteMode};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 仅创建新标签，不修改现有标签
+    /// exiftool.write("photo.jpg")
+    ///     .tag("NewTag", "value")
+    ///     .write_mode(WriteMode::Create)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn write_mode(mut self, mode: WriteMode) -> Self {
+        self.raw_args.push(format!("-wm {}", mode.as_str()));
+        self
+    }
+
+    /// 设置密码
+    ///
+    /// 使用 `-password` 选项处理受密码保护的文件
+    ///
+    /// # 安全性警告
+    ///
+    /// 密码将以纯文本形式传递给 ExifTool 进程。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 写入受密码保护的 PDF
+    /// exiftool.write("protected.pdf")
+    ///     .tag("Title", "New Title")
+    ///     .password("secret123")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn password(mut self, passwd: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-password {}", passwd.into()));
+        self
+    }
+
+    /// 设置列表项分隔符
+    ///
+    /// 使用 `-sep` 选项设置列表项的分隔符字符串
+    pub fn separator(mut self, sep: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-sep {}", sep.into()));
+        self
+    }
+
+    /// 设置 API 选项
+    ///
+    /// 使用 `-api` 选项设置 ExifTool API 选项
+    pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
+        let arg = match value {
+            Some(v) => format!("-api {}={}", opt.into(), v.into()),
+            None => format!("-api {}", opt.into()),
+        };
+        self.raw_args.push(arg);
+        self
+    }
+
+    /// 设置用户参数
+    ///
+    /// 使用 `-userParam` 选项设置用户参数
+    pub fn user_param(
+        mut self,
+        param: impl Into<String>,
+        value: Option<impl Into<String>>,
+    ) -> Self {
+        let arg = match value {
+            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
+            None => format!("-userParam {}", param.into()),
+        };
+        self.raw_args.push(arg);
         self
     }
 
@@ -213,7 +331,11 @@ impl WriteResult {
             "{}_original",
             self.path.extension()?.to_string_lossy()
         ));
-        if backup.exists() { Some(backup) } else { None }
+        if backup.exists() {
+            Some(backup)
+        } else {
+            None
+        }
     }
 }
 

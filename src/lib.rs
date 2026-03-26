@@ -65,7 +65,7 @@ pub use error::{Error, Result};
 pub use process::Response;
 pub use query::{BatchQueryBuilder, QueryBuilder};
 pub use types::{Metadata, TagId, TagValue};
-pub use write::{WriteBuilder, WriteResult};
+pub use write::{WriteBuilder, WriteMode, WriteResult};
 
 // 连接池
 pub use pool::{ExifToolPool, PoolConnection, batch_with_pool, with_pool};
@@ -350,6 +350,75 @@ impl ExifTool {
     pub fn close(&self) -> Result<()> {
         let mut inner = self.inner.lock()?;
         inner.close()
+    }
+
+    /// 删除备份文件
+    ///
+    /// 使用 `-delete_original` 选项删除 `_original` 备份文件。
+    ///
+    /// # 参数
+    ///
+    /// * `path` - 原始文件路径（ExifTool 会找到对应的备份文件）
+    /// * `force` - 是否强制删除（使用 `-delete_original!`）
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 删除 photo.jpg 的备份文件 photo.jpg_original
+    /// exiftool.delete_original("photo.jpg", false)?;
+    ///
+    /// // 强制删除备份文件
+    /// exiftool.delete_original("photo.jpg", true)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn delete_original<P: AsRef<Path>>(&self, path: P, force: bool) -> Result<()> {
+        let arg = if force {
+            "-delete_original!"
+        } else {
+            "-delete_original"
+        };
+        let args = vec![
+            arg.to_string(),
+            path.as_ref().to_string_lossy().to_string(),
+        ];
+        self.execute_raw(&args)?;
+        Ok(())
+    }
+
+    /// 从备份恢复原始文件
+    ///
+    /// 使用 `-restore_original` 选项从 `_original` 备份文件恢复原始文件。
+    ///
+    /// # 参数
+    ///
+    /// * `path` - 文件路径
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从 photo.jpg_original 恢复 photo.jpg
+    /// exiftool.restore_original("photo.jpg")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn restore_original<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let args = vec![
+            "-restore_original".to_string(),
+            path.as_ref().to_string_lossy().to_string(),
+        ];
+        self.execute_raw(&args)?;
+        Ok(())
     }
 }
 

@@ -446,7 +446,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 流式处理大文件
     let metadata = exiftool.stream_query("large_video.mp4", &options)?;
-    
+
     Ok(())
 }
 ```
