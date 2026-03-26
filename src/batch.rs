@@ -38,15 +38,23 @@ enum ScriptCommand {
     /// 批量读取
     BatchRead { paths: Vec<PathBuf> },
     /// 复制标签
+    #[allow(dead_code)]
     CopyTags {
         source: PathBuf,
         target: PathBuf,
+        #[allow(dead_code)]
         tags: Vec<String>,
     },
     /// 打印消息
     Print(String),
     /// 设置变量
-    SetVar { name: String, value: String },
+    #[allow(dead_code)]
+    SetVar {
+        #[allow(dead_code)]
+        name: String,
+        #[allow(dead_code)]
+        value: String,
+    },
 }
 
 impl Default for BatchScript {
@@ -124,7 +132,7 @@ impl BatchScript {
                 "batch" => {
                     if !args.is_empty() {
                         script.commands.push(ScriptCommand::BatchRead {
-                            paths: args.iter().map(|s| PathBuf::from(s)).collect(),
+                            paths: args.iter().map(PathBuf::from).collect(),
                         });
                     }
                 }

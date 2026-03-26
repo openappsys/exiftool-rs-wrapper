@@ -4,7 +4,7 @@
 
 use crate::error::Result;
 use crate::ExifTool;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 
 /// REPL 交互式 shell
 pub struct ReplShell {

@@ -279,9 +279,8 @@ fn parse_geocode_result(output: &str) -> Result<GeocodeResult> {
 
 /// 从行中提取值
 fn extract_value(line: &str) -> Option<String> {
-    line.splitn(2, ':')
-        .nth(1)
-        .map(|s| s.trim().to_string())
+    line.split_once(':')
+        .map(|(_, s)| s.trim().to_string())
         .filter(|s| !s.is_empty())
 }
 
