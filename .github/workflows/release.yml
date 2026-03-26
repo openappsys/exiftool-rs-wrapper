@@ -118,6 +118,8 @@ jobs:
   build-binaries:
     name: 构建二进制文件
     needs: [check-version, create-release]
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
