@@ -42,6 +42,7 @@ mod geo;
 mod pool;
 mod process;
 mod query;
+mod retry;
 mod stream;
 mod types;
 mod write;
@@ -87,6 +88,12 @@ pub use stream::{
     Cache, PerformanceStats, ProgressCallback, ProgressReader, ProgressTracker, StreamOptions,
     StreamingOperations,
 };
+
+// 错误恢复和重试
+pub use retry::{BatchResult, Recoverable, RetryPolicy, with_retry_sync};
+
+#[cfg(feature = "async")]
+pub use retry::with_retry;
 
 #[cfg(feature = "async")]
 pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
