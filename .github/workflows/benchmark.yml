@@ -1,0 +1,290 @@
+name: 性能基准测试
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # 每周一早上 6 点运行基准测试
+    - cron: '0 6 * * 1'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 运行基准测试
+  benchmark:
+    name: 运行基准测试
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        uses: ryankurte/action-apt@v1
+        with:
+          packages: libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-benchmark-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 安装 cargo-criterion
+        run: cargo install cargo-criterion --version 1.1.0 || true
+
+      - name: 检出基准历史
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: 运行基准测试
+        run: |
+          # 运行基准测试并输出 JSON
+          cargo bench --all-features 2>&1 | tee benchmark_output.txt || true
+          
+          # 如果有 criterion 输出，复制到 gh-pages
+          if [ -d target/criterion ]; then
+            mkdir -p gh-pages/benchmarks
+            cp -r target/criterion/* gh-pages/benchmarks/ 2>/dev/null || true
+          fi
+
+      - name: 提取基准数据
+        id: extract-benchmark
+        run: |
+          # 创建基准结果 JSON
+          BENCHMARK_DATA="{}"
+          
+          # 尝试从 cargo-criterion 输出提取数据
+          if [ -f benchmark_output.txt ]; then
+            echo "基准测试输出:"
+            cat benchmark_output.txt
+          fi
+          
+          # 保存当前时间戳
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+
+      - name: 上传基准结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            target/criterion/
+            benchmark_output.txt
+
+  # 比较基准测试
+  compare:
+    name: 比较基准测试结果
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        uses: ryankurte/action-apt@v1
+        with:
+          packages: libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: 检出 main 分支
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-branch
+
+      - name: 运行 main 分支基准测试
+        run: |
+          cd main-branch
+          cargo bench --all-features 2>&1 | tee ../main_benchmark.txt || true
+
+      - name: 运行当前分支基准测试
+        run: |
+          cargo bench --all-features 2>&1 | tee pr_benchmark.txt || true
+
+      - name: 比较基准测试结果
+        id: compare
+        run: |
+          echo "## 基准测试结果对比" > benchmark_comparison.md
+          echo "" >> benchmark_comparison.md
+          echo "### Main 分支" >> benchmark_comparison.md
+          echo '```' >> benchmark_comparison.md
+          cat main_benchmark.txt | tail -50 >> benchmark_comparison.md
+          echo '```' >> benchmark_comparison.md
+          echo "" >> benchmark_comparison.md
+          echo "### PR 分支" >> benchmark_comparison.md
+          echo '```' >> benchmark_comparison.md
+          cat pr_benchmark.txt | tail -50 >> benchmark_comparison.md
+          echo '```' >> benchmark_comparison.md
+          
+          cat benchmark_comparison.md
+
+      - name: 发布评论
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('benchmark_comparison.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # 保存基准历史
+  save-history:
+    name: 保存基准历史
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: 检出 gh-pages 分支
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: 创建 gh-pages 分支 (如果不存在)
+        if: failure()
+        run: |
+          git checkout --orphan gh-pages
+          git rm -rf .
+          echo "# Benchmark History" > README.md
+          git add README.md
+          git commit -m "Initialize gh-pages"
+          git push origin gh-pages
+        continue-on-error: true
+
+      - name: 下载基准结果
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results
+
+      - name: 更新基准历史
+        run: |
+          mkdir -p gh-pages/benchmarks
+          
+          # 复制新的基准结果
+          if [ -d benchmark-results/criterion ]; then
+            cp -r benchmark-results/criterion/* gh-pages/benchmarks/ 2>/dev/null || true
+          fi
+          
+          # 记录时间戳
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "$TIMESTAMP" >> gh-pages/benchmarks/timestamps.txt
+
+      - name: 提交基准历史
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: 更新基准测试结果 [skip ci]"
+          git push origin gh-pages
+        continue-on-error: true
+
+  # 检测性能回归
+  regression-check:
+    name: 检测性能回归
+    needs: compare
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 运行性能回归检测
+        run: |
+          echo "检查性能回归..."
+          # 这里可以添加更复杂的回归检测逻辑
+          # 例如：解析基准测试结果，检测是否超过阈值
+
+      - name: 创建性能回归警报
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **性能回归警报**\n\n检测到性能回归，请检查基准测试结果。'
+            });
+
+  # 失败通知
+  notify:
+    name: 失败通知
+    needs: [benchmark, compare, save-history]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: 发送失败通知
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: failure
+          channel: '#performance'
+          text: |
+            基准测试失败！
+            
+            项目: ${{ github.repository }}
+            事件: ${{ github.event_name }}
+            
+            查看日志: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # 定期基准报告
+  scheduled-report:
+    name: 生成定期报告
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: 检出 gh-pages 分支
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: 生成趋势报告
+        run: |
+          echo "# 基准测试趋势报告" > trend_report.md
+          echo "" >> trend_report.md
+          echo "生成时间: $(date)" >> trend_report.md
+          echo "" >> trend_report.md
+          
+          if [ -f benchmarks/timestamps.txt ]; then
+            echo "## 历史运行记录" >> trend_report.md
+            echo "" >> trend_report.md
+            cat benchmarks/timestamps.txt | tail -10 >> trend_report.md
+          fi
+          
+          cat trend_report.md
+
+      - name: 保存报告
+        run: |
+          mv trend_report.md benchmarks/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add benchmarks/trend_report.md
+          git commit -m "docs: 更新基准测试趋势报告 [skip ci]"
+          git push
+        continue-on-error: true

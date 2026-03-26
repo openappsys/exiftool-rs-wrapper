@@ -25,7 +25,7 @@
 //!
 //! // 写入元数据
 //! exiftool.write("photo.jpg")
-//!     .tag("Copyright", "© 2024")
+//!     .tag("Copyright", "© 2026")
 //!     .overwrite_original(true)
 //!     .execute()?;
 //! # Ok(())
@@ -218,13 +218,13 @@ impl ExifTool {
     ///
     /// // 基本写入
     /// exiftool.write("photo.jpg")
-    ///     .tag("Copyright", "© 2024 My Company")
+    ///     .tag("Copyright", "© 2026 My Company")
     ///     .execute()?;
     ///
     /// // 高级写入
     /// exiftool.write("photo.jpg")
     ///     .tag("Artist", "Photographer")
-    ///     .tag("Copyright", "© 2024")
+    ///     .tag("Copyright", "© 2026")
     ///     .delete("Comment")
     ///     .overwrite_original(true)
     ///     .execute()?;
