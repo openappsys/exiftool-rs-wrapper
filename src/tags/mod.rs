@@ -1,54 +1,74 @@
-//! 标签模块 - 按类别组织的预定义标签常量
-//! 
-//! 使用 Cargo features 控制编译：
-//! - common: 基础标签（总是包含）
-//! - exif: EXIF 标准标签
-//! - iptc: IPTC 标签
-//! - xmp: XMP 标签
-//! - gps: GPS 标签
-//! - canon: Canon MakerNotes
-//! - nikon: Nikon MakerNotes
-//! - sony: Sony MakerNotes
-//! - fuji: FujiFilm MakerNotes
-//! - olympus: Olympus MakerNotes
-//! - panasonic: Panasonic MakerNotes
-//! - other: 其他所有标签（15000+个）
+//! 标签模块 - 按需加载的灵活标签系统
+//!
+//! 本模块支持通过 Cargo features 灵活选择需要编译的标签组。
+//!
+//! # 使用示例
+//!
+//! ```toml
+//! # Cargo.toml
+//! [dependencies]
+//! # 默认使用平衡方案
+//! exiftool-rs-wrapper = "0.1"
+//!
+//! # 仅使用标准 EXIF 标签（最小体积）
+//! exiftool-rs-wrapper = { version = "0.1", default-features = false, features = ["minimal"] }
+//!
+//! # 标准元数据 + Canon 和 Nikon
+//! exiftool-rs-wrapper = { version = "0.1", default-features = false, features = ["standard", "canon", "nikon"] }
+//!
+//! # 视频处理专用
+//! exiftool-rs-wrapper = { version = "0.1", default-features = false, features = ["video", "canon", "nikon", "sony"] }
+//! ```
 
-// 基础标签（总是包含）
+// 允许未使用的常量，因为标签是为用户准备的
+#![allow(dead_code)]
+// 允许未使用的导入，因为这些导出是供用户使用的
+#![allow(unused_imports)]
+
+// 核心基础标签（始终编译）
 pub mod common;
 
-// 标准标签
-#[cfg(feature = "exif")]
-pub mod exif;
+// 标准元数据标签
+#[cfg(feature = "standard")]
+pub mod standard;
 
-#[cfg(feature = "iptc")]
-pub mod iptc;
+// 厂商特定标签
+#[cfg(feature = "vendors-common")]
+pub mod vendors;
 
-#[cfg(feature = "xmp")]
-pub mod xmp;
+// 文件格式标签
+#[cfg(feature = "image-formats")]
+pub mod formats;
 
-#[cfg(feature = "gps")]
-pub mod gps;
+// 视频元数据
+#[cfg(feature = "video")]
+pub mod video;
 
-// 厂商标签
-#[cfg(feature = "canon")]
-pub mod canon;
-
-#[cfg(feature = "nikon")]
-pub mod nikon;
-
-#[cfg(feature = "sony")]
-pub mod sony;
-
-#[cfg(feature = "fuji")]
-pub mod fuji;
-
-#[cfg(feature = "olympus")]
-pub mod olympus;
-
-#[cfg(feature = "panasonic")]
-pub mod panasonic;
+// 音频元数据
+#[cfg(feature = "audio")]
+pub mod audio;
 
 // 其他所有标签
 #[cfg(feature = "other")]
 pub mod other;
+
+// 重新导出
+pub use common::*;
+
+#[cfg(feature = "standard")]
+pub use standard::*;
+
+#[cfg(feature = "vendors-common")]
+pub use vendors::*;
+
+#[cfg(feature = "image-formats")]
+pub use formats::*;
+
+#[cfg(feature = "video")]
+pub use video::*;
+
+#[cfg(feature = "audio")]
+pub use audio::*;
+
+#[cfg(feature = "other")]
+pub use other::*;
