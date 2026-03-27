@@ -33,8 +33,32 @@ tempfile = "3.27"
 lru = "0.16"
 
 [features]
-default = []
+default = ["all-tags"]
 async = ["tokio", "futures"]
+
+# 标签模块 feature flags - 按需编译
+# 基础模块
+exif = []     # EXIF 标准标签（图像宽度、高度、曝光等）
+iptc = []     # IPTC 标签（新闻、标题、关键词等）
+xmp = []      # XMP 标签（可扩展元数据）
+gps = []      # GPS 标签（地理位置信息）
+
+# 厂商特定模块
+canon = []    # Canon MakerNotes
+nikon = []    # Nikon MakerNotes
+sony = []     # Sony MakerNotes
+fuji = []     # FujiFilm MakerNotes
+olympus = []  # Olympus MakerNotes
+panasonic = [] # Panasonic MakerNotes
+
+# 其他所有标签（15000+ 个）
+other = []
+
+# 预设组合
+standard = ["exif", "iptc", "xmp", "gps"]  # 标准元数据
+vendors = ["canon", "nikon", "sony", "fuji", "olympus", "panasonic"]  # 所有厂商
+all-tags = ["standard", "vendors", "other"]  # 所有标签（你最后还是会全部编译上，哈哈！）
+minimal = ["exif"]  # 最小体积，仅基本 EXIF
 
 [dev-dependencies]
 tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }

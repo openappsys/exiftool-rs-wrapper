@@ -8,7 +8,7 @@
 
 [中文](README.md) | **English**
 
-> A high-performance, type-safe Rust wrapper for ExifTool with 100% feature coverage
+> A high-performance, type-safe Rust wrapper for ExifTool with 100% core feature coverage and 2375+ predefined tags (working towards full 18000+ tag support)
 
 ## Introduction
 
@@ -16,7 +16,9 @@
 
 ### Core Features
 
-- **100% Feature Coverage**: Complete support for all ExifTool read, write, and advanced features
+- **100% Core Feature Coverage**: Complete support for all major ExifTool command-line options and advanced features
+- **2375+ Predefined Tags**: Comprehensive tag coverage for EXIF, IPTC, XMP, GPS, and major camera makers (Canon, Nikon, Sony, Fuji, Olympus, Panasonic)
+- **Modular Tag System**: Split into modules by category with feature flags for selective compilation
 - **High Performance**: Uses `-stay_open` mode to keep the process running, avoiding startup overhead
 - **Type Safety**: Complete tag type system with strongly-typed APIs
 - **Async Support**: Tokio-based async API (optional feature)
@@ -53,6 +55,14 @@
 - **Checksums**: Calculate file checksums (MD5, SHA256, etc.)
 - **Streaming**: Large file processing with progress tracking
 - **Error Recovery**: Configurable retry strategies
+
+### Modular Tag System
+
+- **Feature Flags**: Compile only the tags you need via Cargo features
+- **Module Organization**: Tags split by category (exif, iptc, xmp, gps, canon, nikon, etc.)
+- **Vendor Support**: Complete MakerNotes for Canon (528 tags), Nikon (514 tags), Sony (476 tags), FujiFilm (143 tags), Olympus (357 tags), Panasonic (159 tags)
+- **String API Fallback**: Access any tag via string for tags not yet predefined
+- **Tag Generation Scripts**: Automated scripts to extract tags from ExifTool (`scripts/generate_tags.sh`)
 
 ### Performance Optimizations
 
@@ -95,7 +105,34 @@ exiftool-rs-wrapper = "0.1.0"
 
 # Enable async support (optional)
 exiftool-rs-wrapper = { version = "0.1.0", features = ["async"] }
+
+# Minimal build - only basic EXIF tags
+exiftool-rs-wrapper = { version = "0.1.0", default-features = false, features = ["exif"] }
+
+# Standard metadata (EXIF + IPTC + XMP + GPS)
+exiftool-rs-wrapper = { version = "0.1.0", default-features = false, features = ["standard"] }
+
+# Specific vendors only
+exiftool-rs-wrapper = { version = "0.1.0", default-features = false, features = ["exif", "canon", "nikon"] }
 ```
+
+### Available Features
+
+- `exif` - EXIF standard tags (ImageWidth, ExposureTime, ISO, etc.)
+- `iptc` - IPTC tags (Headline, Keywords, Copyright, etc.)
+- `xmp` - XMP tags (Title, Creator, Rights, etc.)
+- `gps` - GPS tags (Latitude, Longitude, Altitude, etc.)
+- `canon` - Canon MakerNotes (528 tags)
+- `nikon` - Nikon MakerNotes (514 tags)
+- `sony` - Sony MakerNotes (476 tags)
+- `fuji` - FujiFilm MakerNotes (143 tags)
+- `olympus` - Olympus MakerNotes (357 tags)
+- `panasonic` - Panasonic MakerNotes (159 tags)
+- `other` - All other tags (15000+, in progress)
+- `standard` - Convenience feature: exif + iptc + xmp + gps
+- `vendors` - Convenience feature: canon + nikon + sony + fuji + olympus + panasonic
+- `all-tags` - All available tags (default)
+- `async` - Async API support via Tokio
 
 ## Quick Start
 
@@ -460,6 +497,45 @@ Performance test results on typical hardware (for reference only):
 | Read single JPEG | ~5ms | - | ~5ms |
 | Batch read 100 files | 450ms | 120ms | 110ms |
 | Write single tag | ~15ms | - | ~15ms |
+
+## Tag System Architecture
+
+### Current Status
+
+- **2375 Predefined Tags**: Complete coverage of standard EXIF, IPTC, XMP, GPS, and major camera makers
+- **Modular Design**: Tags organized by category in `src/tags/` directory
+- **Feature Flags**: Selective compilation via Cargo features
+
+### Tag Generation
+
+The library includes scripts to extract tags directly from ExifTool:
+
+```bash
+# Generate all vendor tags
+./scripts/generate_tags.sh
+
+# Generate specific vendor
+./scripts/generate_tags.sh Canon
+./scripts/generate_tags.sh Nikon
+./scripts/generate_tags.sh Sony
+```
+
+This ensures 100% compatibility with your installed ExifTool version.
+
+### Working Towards 18000+ Tags
+
+The library is actively being expanded to support all ~18000 ExifTool tags:
+
+- ✅ **Phase 1**: Standard metadata (920 tags) - COMPLETE
+- ✅ **Phase 2**: Major camera makers (2375 tags total) - COMPLETE
+- 🔄 **Phase 3**: All remaining tags (~15600 tags) - IN PROGRESS
+
+You can access any tag (even undefined ones) via the string API:
+
+```rust
+// Access any ExifTool tag
+let rare_tag: String = exiftool.read_tag("photo.jpg", "SomeRareTag")?;
+```
 | Batch write 100 files | 1.5s | 450ms | 420ms |
 
 ### Optimization Tips
