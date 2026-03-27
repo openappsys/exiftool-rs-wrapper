@@ -2,10 +2,21 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::process::Response;
 use crate::types::{Metadata, TagId};
-use crate::ExifTool;
+
+/// 转义格式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EscapeFormat {
+    /// HTML 转义 (-E)
+    Html,
+    /// XML 转义 (-ex)
+    Xml,
+    /// C 语言转义 (-ec)
+    C,
+}
 
 /// 查询构建器
 pub struct QueryBuilder<'et> {
@@ -16,8 +27,38 @@ pub struct QueryBuilder<'et> {
     include_duplicates: bool,
     raw_values: bool,
     group_by_category: bool,
+    no_composite: bool,
+    extract_embedded: Option<u8>,
+    extensions: Vec<String>,
+    ignore_dirs: Vec<String>,
+    recursive: bool,
+    progress_interval: Option<u32>,
+    progress_title: Option<String>,
     specific_tags: Vec<String>,
     excluded_tags: Vec<String>,
+    // 输出格式选项
+    decimal: bool,
+    escape_format: Option<EscapeFormat>,
+    force_print: bool,
+    group_names: Option<u8>,
+    html_format: bool,
+    hex: bool,
+    long_format: bool,
+    latin: bool,
+    short_format: Option<u8>,
+    tab_format: bool,
+    table_format: bool,
+    text_out: Option<String>,
+    tag_out: Option<String>,
+    tag_out_ext: Vec<String>,
+    list_item: Option<u32>,
+    file_order: Option<(String, bool)>,
+    quiet: bool,
+    // 高级输出选项
+    html_dump: Option<u32>,
+    php_format: bool,
+    plot_format: bool,
+    args_format: bool,
 }
 
 impl<'et> QueryBuilder<'et> {
@@ -31,8 +72,38 @@ impl<'et> QueryBuilder<'et> {
             include_duplicates: false,
             raw_values: false,
             group_by_category: false,
+            no_composite: false,
+            extract_embedded: None,
+            extensions: Vec::new(),
+            ignore_dirs: Vec::new(),
+            recursive: false,
+            progress_interval: None,
+            progress_title: None,
             specific_tags: Vec::new(),
             excluded_tags: Vec::new(),
+            // 输出格式选项
+            decimal: false,
+            escape_format: None,
+            force_print: false,
+            group_names: None,
+            html_format: false,
+            hex: false,
+            long_format: false,
+            latin: false,
+            short_format: None,
+            tab_format: false,
+            table_format: false,
+            text_out: None,
+            tag_out: None,
+            tag_out_ext: Vec::new(),
+            list_item: None,
+            file_order: None,
+            quiet: false,
+            // 高级输出选项
+            html_dump: None,
+            php_format: false,
+            plot_format: false,
+            args_format: false,
         }
     }
 
@@ -57,6 +128,181 @@ impl<'et> QueryBuilder<'et> {
     /// 按类别分组（-g1 选项）
     pub fn group_by_category(mut self, yes: bool) -> Self {
         self.group_by_category = yes;
+        self
+    }
+
+    /// 禁用复合标签生成
+    ///
+    /// 使用 `-e` 选项禁用复合标签（Composite tags）的生成。
+    /// 复合标签是由 ExifTool 根据其他标签计算得出的派生标签。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 只读取原始标签，不生成复合标签
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .no_composite(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn no_composite(mut self, yes: bool) -> Self {
+        self.no_composite = yes;
+        self
+    }
+
+    /// 提取嵌入文件信息
+    ///
+    /// 使用 `-ee` 选项从文件中提取嵌入的文件信息。
+    /// 例如从 RAW 文件中提取 JPEG 预览图的元数据。
+    ///
+    /// # 级别
+    ///
+    /// - `None` - 不提取嵌入文件（默认）
+    /// - `Some(1)` - `-ee` 提取直接嵌入的文件
+    /// - `Some(2)` - `-ee2` 提取所有层级的嵌入文件
+    /// - `Some(3+)` - `-ee3` 及以上更深入的提取
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 提取嵌入文件信息
+    /// let metadata = exiftool.query("photo.raw")
+    ///     .extract_embedded(Some(1))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn extract_embedded(mut self, level: Option<u8>) -> Self {
+        self.extract_embedded = level;
+        self
+    }
+
+    /// 设置文件扩展名过滤
+    ///
+    /// 使用 `-ext` 选项只处理指定扩展名的文件。
+    /// 可以使用多次来指定多个扩展名。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 只处理 jpg 文件
+    /// let metadata = exiftool.query("/photos")
+    ///     .extension("jpg")
+    ///     .recursive(true)
+    ///     .execute()?;
+    ///
+    /// // 处理多个扩展名
+    /// let metadata = exiftool.query("/photos")
+    ///     .extension("jpg")
+    ///     .extension("png")
+    ///     .extension("raw")
+    ///     .recursive(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn extension(mut self, ext: impl Into<String>) -> Self {
+        self.extensions.push(ext.into());
+        self
+    }
+
+    /// 设置要忽略的目录
+    ///
+    /// 使用 `-i` 选项忽略指定的目录名称。
+    /// 在递归处理时，匹配的目录将被跳过。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 忽略 .git 和 node_modules 目录
+    /// let metadata = exiftool.query("/project")
+    ///     .ignore(".git")
+    ///     .ignore("node_modules")
+    ///     .recursive(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn ignore(mut self, dir: impl Into<String>) -> Self {
+        self.ignore_dirs.push(dir.into());
+        self
+    }
+
+    /// 递归处理子目录
+    ///
+    /// 使用 `-r` 选项递归处理目录中的所有文件。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 递归处理整个目录树
+    /// let metadata = exiftool.query("/photos")
+    ///     .recursive(true)
+    ///     .extension("jpg")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn recursive(mut self, yes: bool) -> Self {
+        self.recursive = yes;
+        self
+    }
+
+    /// 启用进度显示
+    ///
+    /// 使用 `-progress` 选项在处理文件时显示进度信息。
+    /// 可以指定间隔（每隔多少文件显示一次）和标题。
+    ///
+    /// # 参数
+    ///
+    /// - `interval` - 每隔多少文件显示一次进度（None 表示每个文件都显示）
+    /// - `title` - 进度信息的标题（可选）
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 每 10 个文件显示一次进度
+    /// let metadata = exiftool.query("/photos")
+    ///     .recursive(true)
+    ///     .progress(Some(10), Some("Processing"))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn progress(mut self, interval: Option<u32>, title: Option<impl Into<String>>) -> Self {
+        self.progress_interval = interval;
+        self.progress_title = title.map(|t| t.into());
         self
     }
 
@@ -379,6 +625,175 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 十进制显示标签 ID
+    ///
+    /// 使用 `-D` 选项以十进制格式显示标签 ID 编号
+    pub fn decimal(mut self, yes: bool) -> Self {
+        self.decimal = yes;
+        self
+    }
+
+    /// 转义格式
+    ///
+    /// 使用 `-E`、`-ex` 或 `-ec` 选项转义标签值
+    pub fn escape(mut self, format: EscapeFormat) -> Self {
+        self.escape_format = Some(format);
+        self
+    }
+
+    /// 强制打印
+    ///
+    /// 使用 `-f` 选项强制打印所有指定标签
+    pub fn force_print(mut self, yes: bool) -> Self {
+        self.force_print = yes;
+        self
+    }
+
+    /// 打印组名
+    ///
+    /// 使用 `-G` 选项打印每个标签的组名
+    pub fn group_names(mut self, level: Option<u8>) -> Self {
+        self.group_names = level;
+        self
+    }
+
+    /// HTML 格式
+    ///
+    /// 使用 `-h` 选项以 HTML 格式输出
+    pub fn html_format(mut self, yes: bool) -> Self {
+        self.html_format = yes;
+        self
+    }
+
+    /// 十六进制显示
+    ///
+    /// 使用 `-H` 选项以十六进制显示标签 ID
+    pub fn hex(mut self, yes: bool) -> Self {
+        self.hex = yes;
+        self
+    }
+
+    /// 长格式输出
+    ///
+    /// 使用 `-l` 选项以长格式（2行）输出
+    pub fn long_format(mut self, yes: bool) -> Self {
+        self.long_format = yes;
+        self
+    }
+
+    /// Latin1 编码
+    ///
+    /// 使用 `-L` 选项使用 Windows Latin1 编码
+    pub fn latin(mut self, yes: bool) -> Self {
+        self.latin = yes;
+        self
+    }
+
+    /// 短格式输出
+    ///
+    /// 使用 `-s` 或 `-S` 选项以短格式输出
+    pub fn short_format(mut self, level: Option<u8>) -> Self {
+        self.short_format = level;
+        self
+    }
+
+    /// Tab 分隔格式
+    ///
+    /// 使用 `-t` 选项以 Tab 分隔格式输出
+    pub fn tab_format(mut self, yes: bool) -> Self {
+        self.tab_format = yes;
+        self
+    }
+
+    /// 表格格式
+    ///
+    /// 使用 `-T` 选项以表格格式输出
+    pub fn table_format(mut self, yes: bool) -> Self {
+        self.table_format = yes;
+        self
+    }
+
+    /// 文本输出到文件
+    ///
+    /// 使用 `-w` 选项将输出写入文件
+    pub fn text_out(mut self, ext: impl Into<String>) -> Self {
+        self.text_out = Some(ext.into());
+        self
+    }
+
+    /// 标签输出到文件
+    ///
+    /// 使用 `-W` 选项为每个标签创建输出文件
+    pub fn tag_out(mut self, format: impl Into<String>) -> Self {
+        self.tag_out = Some(format.into());
+        self
+    }
+
+    /// 标签输出扩展名过滤
+    ///
+    /// 使用 `-Wext` 选项指定 `-W` 输出的文件类型
+    pub fn tag_out_ext(mut self, ext: impl Into<String>) -> Self {
+        self.tag_out_ext.push(ext.into());
+        self
+    }
+
+    /// 提取列表项
+    ///
+    /// 使用 `-listItem` 选项提取列表中的特定项
+    pub fn list_item(mut self, index: u32) -> Self {
+        self.list_item = Some(index);
+        self
+    }
+
+    /// 文件处理顺序
+    ///
+    /// 使用 `-fileOrder` 选项设置文件处理顺序
+    pub fn file_order(mut self, tag: impl Into<String>, descending: bool) -> Self {
+        self.file_order = Some((tag.into(), descending));
+        self
+    }
+
+    /// 静默模式
+    ///
+    /// 使用 `-q` 选项减少输出信息
+    pub fn quiet(mut self, yes: bool) -> Self {
+        self.quiet = yes;
+        self
+    }
+
+    /// HTML二进制转储
+    ///
+    /// 使用 `-htmlDump` 选项生成HTML格式的二进制转储
+    /// 可以指定可选的偏移量
+    pub fn html_dump(mut self, offset: Option<u32>) -> Self {
+        self.html_dump = offset;
+        self
+    }
+
+    /// PHP数组格式输出
+    ///
+    /// 使用 `-php` 选项导出为PHP数组格式
+    pub fn php_format(mut self, yes: bool) -> Self {
+        self.php_format = yes;
+        self
+    }
+
+    /// SVG plot格式输出
+    ///
+    /// 使用 `-plot` 选项输出为SVG plot文件
+    pub fn plot_format(mut self, yes: bool) -> Self {
+        self.plot_format = yes;
+        self
+    }
+
+    /// 格式化为exiftool参数
+    ///
+    /// 使用 `-args` 选项将元数据格式化为exiftool参数格式
+    pub fn args_format(mut self, yes: bool) -> Self {
+        self.args_format = yes;
+        self
+    }
+
     /// 执行查询
     pub fn execute(self) -> Result<Metadata> {
         let args = self.build_args();
@@ -453,6 +868,164 @@ impl<'et> QueryBuilder<'et> {
         // 原始数值
         if self.raw_values {
             args.push("-n".to_string());
+        }
+
+        // 十进制显示
+        if self.decimal {
+            args.push("-D".to_string());
+        }
+
+        // 转义格式
+        if let Some(format) = self.escape_format {
+            let flag = match format {
+                EscapeFormat::Html => "-E",
+                EscapeFormat::Xml => "-ex",
+                EscapeFormat::C => "-ec",
+            };
+            args.push(flag.to_string());
+        }
+
+        // 强制打印
+        if self.force_print {
+            args.push("-f".to_string());
+        }
+
+        // 组名
+        if let Some(level) = self.group_names {
+            if level == 1 {
+                args.push("-G".to_string());
+            } else {
+                args.push(format!("-G{}", level));
+            }
+        }
+
+        // HTML 格式
+        if self.html_format {
+            args.push("-h".to_string());
+        }
+
+        // 十六进制
+        if self.hex {
+            args.push("-H".to_string());
+        }
+
+        // 长格式
+        if self.long_format {
+            args.push("-l".to_string());
+        }
+
+        // Latin1 编码
+        if self.latin {
+            args.push("-L".to_string());
+        }
+
+        // 短格式
+        if let Some(level) = self.short_format {
+            if level == 0 {
+                args.push("-S".to_string());
+            } else {
+                args.push(format!("-s{}", level));
+            }
+        }
+
+        // Tab 格式
+        if self.tab_format {
+            args.push("-t".to_string());
+        }
+
+        // 表格格式
+        if self.table_format {
+            args.push("-T".to_string());
+        }
+
+        // 文本输出
+        if let Some(ref ext) = self.text_out {
+            args.push(format!("-w {}", ext));
+        }
+
+        // 标签输出
+        if let Some(ref format) = self.tag_out {
+            args.push(format!("-W {}", format));
+        }
+
+        // 标签输出扩展名
+        for ext in &self.tag_out_ext {
+            args.push(format!("-Wext {}", ext));
+        }
+
+        // 列表项
+        if let Some(index) = self.list_item {
+            args.push(format!("-listItem {}", index));
+        }
+
+        // 文件顺序
+        if let Some((ref tag, descending)) = self.file_order {
+            let order = if descending { "-" } else { "" };
+            args.push(format!("-fileOrder {}{}", order, tag));
+        }
+
+        // 静默模式
+        if self.quiet {
+            args.push("-q".to_string());
+        }
+
+        // HTML二进制转储
+        if let Some(offset) = self.html_dump {
+            args.push(format!("-htmlDump{}", offset));
+        }
+
+        // PHP数组格式
+        if self.php_format {
+            args.push("-php".to_string());
+        }
+
+        // SVG plot格式
+        if self.plot_format {
+            args.push("-plot".to_string());
+        }
+
+        // 格式化为exiftool参数
+        if self.args_format {
+            args.push("-args".to_string());
+        }
+
+        // 禁用复合标签
+        if self.no_composite {
+            args.push("-e".to_string());
+        }
+
+        // 提取嵌入文件
+        if let Some(level) = self.extract_embedded {
+            if level == 1 {
+                args.push("-ee".to_string());
+            } else {
+                args.push(format!("-ee{}", level));
+            }
+        }
+
+        // 文件扩展名过滤
+        for ext in &self.extensions {
+            args.push(format!("-ext {}", ext));
+        }
+
+        // 忽略目录
+        for dir in &self.ignore_dirs {
+            args.push(format!("-i {}", dir));
+        }
+
+        // 递归处理
+        if self.recursive {
+            args.push("-r".to_string());
+        }
+
+        // 进度显示
+        if let Some(interval) = self.progress_interval {
+            let progress_arg = if let Some(ref title) = self.progress_title {
+                format!("-progress{}:{}", interval, title)
+            } else {
+                format!("-progress{}", interval)
+            };
+            args.push(progress_arg);
         }
 
         // 添加自定义参数
