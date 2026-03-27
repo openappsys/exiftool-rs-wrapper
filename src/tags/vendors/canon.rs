@@ -60,7 +60,6 @@ pub const CANON_CAMERA_ORIENTATION: TagId = TagId("CameraOrientation");
 pub const CANON_CAMERA_PICTURE_STYLE: TagId = TagId("CameraPictureStyle");
 pub const CANON_CAMERA_TEMPERATURE: TagId = TagId("CameraTemperature");
 pub const CANON_CAMERA_TYPE: TagId = TagId("CameraType");
-pub const CANON_CANON: TagId = TagId("Canon");
 pub const CANON_CANON_EXPOSURE_MODE: TagId = TagId("CanonExposureMode");
 pub const CANON_CANON_FILE_LENGTH: TagId = TagId("CanonFileLength");
 pub const CANON_CANON_FIRMWARE_VERSION: TagId = TagId("CanonFirmwareVersion");
