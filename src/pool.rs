@@ -6,6 +6,7 @@ use crate::ExifTool;
 use crate::error::{Error, Result};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// ExifTool 连接池
 #[derive(Debug)]
@@ -58,6 +59,23 @@ impl ExifToolPool {
             })
         } else {
             Err(Error::process("No available connections in pool"))
+        }
+    }
+
+    /// 在超时时间内等待获取连接
+    pub fn acquire_timeout(&self, timeout: Duration) -> Result<PoolConnection> {
+        let start = Instant::now();
+
+        loop {
+            if let Some(conn) = self.try_acquire() {
+                return Ok(conn);
+            }
+
+            if start.elapsed() >= timeout {
+                return Err(Error::Timeout);
+            }
+
+            std::thread::sleep(Duration::from_millis(5));
         }
     }
 
@@ -141,26 +159,73 @@ where
 {
     use std::thread;
 
+    let total = items.len();
+    if total == 0 {
+        return Vec::new();
+    }
+
     let processor = Arc::new(processor);
     let pool = pool.clone();
-    let mut handles = Vec::with_capacity(items.len());
+    let workers = pool.size().min(total);
+    let queue: Arc<Mutex<VecDeque<(usize, P)>>> =
+        Arc::new(Mutex::new(items.into_iter().enumerate().collect()));
+    let results: Arc<Mutex<Vec<Option<Result<R>>>>> = Arc::new(Mutex::new(
+        std::iter::repeat_with(|| None).take(total).collect(),
+    ));
+    let mut handles = Vec::with_capacity(workers);
 
-    for item in items {
+    for _ in 0..workers {
         let pool = pool.clone();
         let processor = Arc::clone(&processor);
+        let queue = Arc::clone(&queue);
+        let results = Arc::clone(&results);
 
-        let handle = thread::spawn(move || with_pool(&pool, |exiftool| processor(exiftool, item)));
+        let handle = thread::spawn(move || {
+            loop {
+                let next = {
+                    let mut queue = match queue.lock() {
+                        Ok(q) => q,
+                        Err(_) => return,
+                    };
+                    queue.pop_front()
+                };
+
+                let Some((index, item)) = next else {
+                    return;
+                };
+
+                let result = match pool.acquire_timeout(Duration::from_secs(30)) {
+                    Ok(mut conn) => match conn.get_mut() {
+                        Some(exiftool) => processor(exiftool, item),
+                        None => Err(Error::process("Failed to get connection")),
+                    },
+                    Err(e) => Err(e),
+                };
+
+                if let Ok(mut all_results) = results.lock() {
+                    all_results[index] = Some(result);
+                }
+            }
+        });
 
         handles.push(handle);
     }
 
-    handles
-        .into_iter()
-        .map(|h| {
-            h.join()
-                .unwrap_or_else(|_| Err(Error::process("Thread panicked")))
-        })
-        .collect()
+    for handle in handles {
+        if handle.join().is_err() {
+            return vec![Err(Error::process("Thread panicked"))];
+        }
+    }
+
+    let mut out = Vec::with_capacity(total);
+    if let Ok(mut locked) = results.lock() {
+        for item in locked.drain(..) {
+            out.push(item.unwrap_or_else(|| Err(Error::process("Missing batch result"))));
+        }
+        return out;
+    }
+
+    vec![Err(Error::MutexPoisoned)]
 }
 
 #[cfg(test)]

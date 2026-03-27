@@ -1,15 +1,65 @@
 //! ExifTool Rust Wrapper 命令行工具
 
+use clap::{Parser, Subcommand};
 use exiftool_rs_wrapper::ExifTool;
-use std::env;
+
+#[derive(Debug, Parser)]
+#[command(name = "exiftool-rs-wrapper")]
+#[command(about = "ExifTool Rust Wrapper 命令行工具")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// 读取文件元数据
+    Read {
+        /// 文件路径
+        path: String,
+        /// 可选的标签名
+        tag: Option<String>,
+    },
+    /// 写入标签
+    Write {
+        /// 文件路径
+        path: String,
+        /// 标签名
+        tag: String,
+        /// 标签值
+        value: String,
+        /// 是否直接覆盖原文件（默认 false）
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// 删除标签
+    Delete {
+        /// 文件路径
+        path: String,
+        /// 标签名
+        tag: String,
+        /// 是否直接覆盖原文件（默认 false）
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// 从源文件复制标签到目标文件
+    Copy {
+        /// 源文件路径
+        source: String,
+        /// 目标文件路径
+        target: String,
+        /// 是否直接覆盖原文件（默认 false）
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// 显示 ExifTool 版本
+    Version,
+    /// 列出常用标签
+    List,
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        print_usage();
-        return;
-    }
+    let cli = Cli::parse();
 
     // 创建 ExifTool 实例
     let exiftool = match ExifTool::new() {
@@ -21,54 +71,32 @@ fn main() {
         }
     };
 
-    match args[1].as_str() {
-        "read" => cmd_read(&exiftool, &args),
-        "write" => cmd_write(&exiftool, &args),
-        "delete" => cmd_delete(&exiftool, &args),
-        "copy" => cmd_copy(&exiftool, &args),
-        "version" => cmd_version(&exiftool),
-        "list" => cmd_list(&exiftool),
-        _ => {
-            eprintln!("错误: 未知命令 '{}'", args[1]);
-            print_usage();
-            std::process::exit(1);
-        }
+    match cli.command {
+        Commands::Read { path, tag } => cmd_read(&exiftool, &path, tag.as_deref()),
+        Commands::Write {
+            path,
+            tag,
+            value,
+            overwrite,
+        } => cmd_write(&exiftool, &path, &tag, &value, overwrite),
+        Commands::Delete {
+            path,
+            tag,
+            overwrite,
+        } => cmd_delete(&exiftool, &path, &tag, overwrite),
+        Commands::Copy {
+            source,
+            target,
+            overwrite,
+        } => cmd_copy(&exiftool, &source, &target, overwrite),
+        Commands::Version => cmd_version(&exiftool),
+        Commands::List => cmd_list(&exiftool),
     }
 }
 
-fn print_usage() {
-    println!("ExifTool Rust Wrapper - 命令行工具");
-    println!();
-    println!("用法: exiftool-rs-wrapper <命令> [参数...]");
-    println!();
-    println!("命令:");
-    println!("  read <文件路径>              读取文件所有元数据");
-    println!("  read <文件路径> <标签>       读取特定标签");
-    println!("  write <文件路径> <标签> <值>  写入标签值");
-    println!("  delete <文件路径> <标签>     删除标签");
-    println!("  copy <源文件> <目标文件>    从源文件复制标签到目标文件");
-    println!("  version                      显示 ExifTool 版本");
-    println!("  list                         列出常用标签");
-    println!();
-    println!("示例:");
-    println!("  exiftool-rs-wrapper read photo.jpg");
-    println!("  exiftool-rs-wrapper read photo.jpg Make");
-    println!("  exiftool-rs-wrapper write photo.jpg Copyright \"© 2026\"");
-    println!("  exiftool-rs-wrapper delete photo.jpg Comment");
-}
-
-fn cmd_read(exiftool: &ExifTool, args: &[String]) {
-    if args.len() < 3 {
-        eprintln!("错误: 请提供文件路径");
-        eprintln!("用法: read <文件路径> [标签]");
-        std::process::exit(1);
-    }
-
-    let path = &args[2];
-
-    if args.len() >= 4 {
+fn cmd_read(exiftool: &ExifTool, path: &str, tag: Option<&str>) {
+    if let Some(tag) = tag {
         // 读取特定标签
-        let tag = &args[3];
         match exiftool.read_tag::<String, _, _>(path, tag) {
             Ok(value) => {
                 println!("{}: {}", tag, value);
@@ -78,36 +106,27 @@ fn cmd_read(exiftool: &ExifTool, args: &[String]) {
                 std::process::exit(1);
             }
         }
-    } else {
-        // 读取所有元数据
-        match exiftool.query(path).execute() {
-            Ok(metadata) => {
-                println!("文件 '{}' 的元数据:", path);
-                println!("{:#?}", metadata);
-            }
-            Err(e) => {
-                eprintln!("错误: {}", e);
-                std::process::exit(1);
-            }
+        return;
+    }
+
+    // 读取所有元数据
+    match exiftool.query(path).execute() {
+        Ok(metadata) => {
+            println!("文件 '{}' 的元数据:", path);
+            println!("{:#?}", metadata);
+        }
+        Err(e) => {
+            eprintln!("错误: {}", e);
+            std::process::exit(1);
         }
     }
 }
 
-fn cmd_write(exiftool: &ExifTool, args: &[String]) {
-    if args.len() < 5 {
-        eprintln!("错误: 参数不足");
-        eprintln!("用法: write <文件路径> <标签> <值>");
-        std::process::exit(1);
-    }
-
-    let path = &args[2];
-    let tag = &args[3];
-    let value = &args[4];
-
+fn cmd_write(exiftool: &ExifTool, path: &str, tag: &str, value: &str, overwrite_original: bool) {
     match exiftool
         .write(path)
         .tag(tag, value)
-        .overwrite_original(true)
+        .overwrite_original(overwrite_original)
         .execute()
     {
         Ok(_) => {
@@ -120,20 +139,11 @@ fn cmd_write(exiftool: &ExifTool, args: &[String]) {
     }
 }
 
-fn cmd_delete(exiftool: &ExifTool, args: &[String]) {
-    if args.len() < 4 {
-        eprintln!("错误: 参数不足");
-        eprintln!("用法: delete <文件路径> <标签>");
-        std::process::exit(1);
-    }
-
-    let path = &args[2];
-    let tag = &args[3];
-
+fn cmd_delete(exiftool: &ExifTool, path: &str, tag: &str, overwrite_original: bool) {
     match exiftool
         .write(path)
         .delete(tag)
-        .overwrite_original(true)
+        .overwrite_original(overwrite_original)
         .execute()
     {
         Ok(_) => {
@@ -146,20 +156,11 @@ fn cmd_delete(exiftool: &ExifTool, args: &[String]) {
     }
 }
 
-fn cmd_copy(exiftool: &ExifTool, args: &[String]) {
-    if args.len() < 4 {
-        eprintln!("错误: 参数不足");
-        eprintln!("用法: copy <源文件> <目标文件>");
-        std::process::exit(1);
-    }
-
-    let source = &args[2];
-    let target = &args[3];
-
+fn cmd_copy(exiftool: &ExifTool, source: &str, target: &str, overwrite_original: bool) {
     match exiftool
         .write(target)
         .copy_from(source)
-        .overwrite_original(true)
+        .overwrite_original(overwrite_original)
         .execute()
     {
         Ok(_) => {

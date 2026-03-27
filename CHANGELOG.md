@@ -7,6 +7,28 @@
 
 ## [未发布]
 
+### 变更
+
+- 修复 `-stay_open` 参数构造：`query`/`write` 的多项参数改为逐 token 传输，避免参数被错误解析
+- 修复 `QueryBuilder::execute_text` 与 `-json` 冲突，文本输出不再强制 JSON
+- 修复 `exclude` 语义为 `--TAG`
+- 改进进程响应处理：支持超时控制、识别 `{ready...}` 结束标记、Warning 不再视为 Error
+- 异步接口改为 `spawn_blocking` 执行同步调用，避免阻塞 Tokio runtime
+- 连接池新增 `acquire_timeout`，批处理改为受控并发 worker 模式
+- CLI 升级为 `clap` 参数解析，写/删/拷默认保留备份，`--overwrite` 显式覆盖
+- 移除可能 panic 的 `Default` 实现（`ExifTool` 与 `AsyncExifTool`）
+
+### 修复
+
+- 修复 `config::hex_dump` 使用无效参数的问题
+- 移除无效配置入口（`with_config` 空实现）以避免误导 API 语义
+
+### 测试
+
+- 增加 `query`、`write` 参数构建回归测试
+- 增加 `process` Warning 级别行为测试
+- 增加 `async` 并行处理辅助函数测试
+
 ## [0.1.4] - 2026-03-27
 
 ### 新增

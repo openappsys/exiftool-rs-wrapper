@@ -150,18 +150,12 @@ impl ProgressTracker {
 pub struct ProgressReader<R: Read> {
     inner: R,
     tracker: Arc<ProgressTracker>,
-    #[allow(dead_code)]
-    buffer_size: usize,
 }
 
 impl<R: Read> ProgressReader<R> {
     /// 创建新的进度读取器
-    pub fn new(inner: R, tracker: Arc<ProgressTracker>, buffer_size: usize) -> Self {
-        Self {
-            inner,
-            tracker,
-            buffer_size,
-        }
+    pub fn new(inner: R, tracker: Arc<ProgressTracker>, _buffer_size: usize) -> Self {
+        Self { inner, tracker }
     }
 
     /// 检查是否已取消

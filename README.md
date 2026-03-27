@@ -8,7 +8,7 @@
 
 **中文** | [English](README-EN.md)
 
-> 一个高性能、类型安全的 Rust ExifTool 封装库，提供 **100% 核心功能覆盖** 和 **2700+ 预定义标签**
+> 一个架构优良、高性能、类型安全的 Rust ExifTool 封装库，支持异步 API，力争对 ExifTool 能力实现 100% 覆盖。
 
 ## 简介
 
@@ -16,11 +16,11 @@
 
 ### 核心特点
 
-- **100% 核心功能覆盖**：完整支持所有主要读取、写入和高级功能
+- **高覆盖目标**：持续提升 ExifTool 选项与行为兼容性，力争 100% 支持
 - **2700+预定义标签**：覆盖标准EXIF、IPTC、XMP和主流相机厂商MakerNotes
 - **高性能**：使用 `-stay_open` 模式保持进程运行，避免频繁启动开销
 - **类型安全**：完整的标签类型系统和强类型 API
-- **异步支持**：基于 Tokio 的异步 API（可选特性）
+- **异步支持**：基于 Tokio 的异步 API（通过 `spawn_blocking` 避免阻塞 runtime）
 - **连接池**：内置连接池支持高并发场景
 - **Builder 模式**：流畅的 API 设计，链式调用
 
@@ -493,6 +493,9 @@ exiftool-rs-wrapper read photo.jpg
 
 # 写入标签
 exiftool-rs-wrapper write photo.jpg Copyright "© 2026"
+
+# 显式覆盖原文件（默认保留备份）
+exiftool-rs-wrapper write photo.jpg Copyright "© 2026" --overwrite
 
 # 删除标签
 exiftool-rs-wrapper delete photo.jpg GPSPosition

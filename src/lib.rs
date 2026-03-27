@@ -114,6 +114,7 @@ pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_paralle
 use process::ExifToolInner;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tracing::{debug, info};
 
 /// ExifTool 主结构体
@@ -133,12 +134,16 @@ pub struct ExifTool {
 /// ExifTool 构建器
 pub struct ExifToolBuilder {
     executable: Option<std::path::PathBuf>,
+    response_timeout: Option<Duration>,
 }
 
 impl ExifToolBuilder {
     /// 创建新的构建器
     pub fn new() -> Self {
-        Self { executable: None }
+        Self {
+            executable: None,
+            response_timeout: None,
+        }
     }
 
     /// 指定 exiftool 可执行文件路径
@@ -147,12 +152,22 @@ impl ExifToolBuilder {
         self
     }
 
+    /// 设置响应超时
+    pub fn response_timeout(mut self, timeout: Duration) -> Self {
+        self.response_timeout = Some(timeout);
+        self
+    }
+
     /// 构建 ExifTool 实例
     pub fn build(self) -> Result<ExifTool> {
+        let timeout = self
+            .response_timeout
+            .unwrap_or_else(|| Duration::from_secs(30));
+
         let inner = if let Some(exe) = self.executable {
-            ExifToolInner::with_executable(exe)?
+            ExifToolInner::with_executable_and_timeout(exe, timeout)?
         } else {
-            ExifToolInner::new()?
+            ExifToolInner::with_executable_and_timeout("exiftool", timeout)?
         };
 
         Ok(ExifTool {
@@ -515,12 +530,6 @@ impl ExifTool {
         ];
         self.execute_raw(&args)?;
         Ok(())
-    }
-}
-
-impl Default for ExifTool {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default ExifTool instance")
     }
 }
 

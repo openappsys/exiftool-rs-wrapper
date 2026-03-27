@@ -354,13 +354,15 @@ impl<'et> QueryBuilder<'et> {
 
     /// 使用特定编码
     pub fn charset(mut self, charset: impl Into<String>) -> Self {
-        self.args.push(format!("-charset {}", charset.into()));
+        self.args.push("-charset".to_string());
+        self.args.push(charset.into());
         self
     }
 
     /// 使用特定语言
     pub fn lang(mut self, lang: impl Into<String>) -> Self {
-        self.args.push(format!("-lang {}", lang.into()));
+        self.args.push("-lang".to_string());
+        self.args.push(lang.into());
         self
     }
 
@@ -389,7 +391,8 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn coord_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-c {}", format.into()));
+        self.args.push("-c".to_string());
+        self.args.push(format.into());
         self
     }
 
@@ -420,7 +423,8 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn date_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-d {}", format.into()));
+        self.args.push("-d".to_string());
+        self.args.push(format.into());
         self
     }
 
@@ -460,7 +464,8 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn print_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-p {}", format.into()));
+        self.args.push("-p".to_string());
+        self.args.push(format.into());
         self
     }
 
@@ -494,7 +499,8 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn separator(mut self, sep: impl Into<String>) -> Self {
-        self.args.push(format!("-sep {}", sep.into()));
+        self.args.push("-sep".to_string());
+        self.args.push(sep.into());
         self
     }
 
@@ -564,11 +570,12 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
-        let arg = match value {
-            Some(v) => format!("-api {}={}", opt.into(), v.into()),
-            None => format!("-api {}", opt.into()),
-        };
-        self.args.push(arg);
+        let option = opt.into();
+        self.args.push("-api".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}={}", option, v.into())),
+            None => self.args.push(option),
+        }
         self
     }
 
@@ -596,11 +603,12 @@ impl<'et> QueryBuilder<'et> {
         param: impl Into<String>,
         value: Option<impl Into<String>>,
     ) -> Self {
-        let arg = match value {
-            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
-            None => format!("-userParam {}", param.into()),
-        };
-        self.args.push(arg);
+        let param = param.into();
+        self.args.push("-userParam".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}={}", param, v.into())),
+            None => self.args.push(param),
+        }
         self
     }
 
@@ -629,7 +637,8 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn password(mut self, passwd: impl Into<String>) -> Self {
-        self.args.push(format!("-password {}", passwd.into()));
+        self.args.push("-password".to_string());
+        self.args.push(passwd.into());
         self
     }
 
@@ -832,7 +841,7 @@ impl<'et> QueryBuilder<'et> {
 
     /// 执行查询
     pub fn execute(self) -> Result<Metadata> {
-        let args = self.build_args();
+        let args = self.build_args(true);
 
         // 发送命令并获取响应
         let response = self.exiftool.execute_raw(&args)?;
@@ -843,14 +852,14 @@ impl<'et> QueryBuilder<'et> {
 
     /// 执行查询并返回 JSON
     pub fn execute_json(self) -> Result<serde_json::Value> {
-        let args = self.build_args();
+        let args = self.build_args(true);
         let response = self.exiftool.execute_raw(&args)?;
         response.json()
     }
 
     /// 执行查询并反序列化为自定义类型
     pub fn execute_as<T: serde::de::DeserializeOwned>(self) -> Result<T> {
-        let args = self.build_args();
+        let args = self.build_args(true);
         let response = self.exiftool.execute_raw(&args)?;
         response.json()
     }
@@ -877,14 +886,18 @@ impl<'et> QueryBuilder<'et> {
     /// # }
     /// ```
     pub fn execute_text(self) -> Result<String> {
-        let args = self.build_args();
+        let args = self.build_args(false);
         let response = self.exiftool.execute_raw(&args)?;
         Ok(response.text().trim().to_string())
     }
 
     /// 构建参数列表
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["-json".to_string()];
+    fn build_args(&self, json_output: bool) -> Vec<String> {
+        let mut args = Vec::new();
+
+        if json_output {
+            args.push("-json".to_string());
+        }
 
         // 分组选项
         if self.group_by_category {
@@ -976,28 +989,33 @@ impl<'et> QueryBuilder<'et> {
 
         // 文本输出
         if let Some(ref ext) = self.text_out {
-            args.push(format!("-w {}", ext));
+            args.push("-w".to_string());
+            args.push(ext.clone());
         }
 
         // 标签输出
         if let Some(ref format) = self.tag_out {
-            args.push(format!("-W {}", format));
+            args.push("-W".to_string());
+            args.push(format.clone());
         }
 
         // 标签输出扩展名
         for ext in &self.tag_out_ext {
-            args.push(format!("-Wext {}", ext));
+            args.push("-Wext".to_string());
+            args.push(ext.clone());
         }
 
         // 列表项
         if let Some(index) = self.list_item {
-            args.push(format!("-listItem {}", index));
+            args.push("-listItem".to_string());
+            args.push(index.to_string());
         }
 
         // 文件顺序
         if let Some((ref tag, descending)) = self.file_order {
             let order = if descending { "-" } else { "" };
-            args.push(format!("-fileOrder {}{}", order, tag));
+            args.push("-fileOrder".to_string());
+            args.push(format!("{}{}", order, tag));
         }
 
         // 静默模式
@@ -1027,21 +1045,24 @@ impl<'et> QueryBuilder<'et> {
 
         // 公共参数
         for arg in &self.common_args {
-            args.push(format!("-common_args {}", arg));
+            args.push("-common_args".to_string());
+            args.push(arg.clone());
         }
 
         // echo输出
         for (text, target) in &self.echo {
-            let echo_arg = match target {
-                Some(t) if t == "stderr" => format!("-echo2 {}", text),
-                _ => format!("-echo {}", text),
+            let option = match target {
+                Some(t) if t == "stderr" => "-echo2",
+                _ => "-echo",
             };
-            args.push(echo_arg);
+            args.push(option.to_string());
+            args.push(text.clone());
         }
 
         // 错误文件
         if let Some(ref filename) = self.efile {
-            args.push(format!("-efile {}", filename));
+            args.push("-efile".to_string());
+            args.push(filename.clone());
         }
 
         // 禁用复合标签
@@ -1060,12 +1081,14 @@ impl<'et> QueryBuilder<'et> {
 
         // 文件扩展名过滤
         for ext in &self.extensions {
-            args.push(format!("-ext {}", ext));
+            args.push("-ext".to_string());
+            args.push(ext.clone());
         }
 
         // 忽略目录
         for dir in &self.ignore_dirs {
-            args.push(format!("-i {}", dir));
+            args.push("-i".to_string());
+            args.push(dir.clone());
         }
 
         // 递归处理
@@ -1093,7 +1116,7 @@ impl<'et> QueryBuilder<'et> {
 
         // 排除标签
         for tag in &self.excluded_tags {
-            args.push(format!("-{}=", tag));
+            args.push(format!("--{}", tag));
         }
 
         // 文件路径
@@ -1228,11 +1251,12 @@ impl<'et> BatchQueryBuilder<'et> {
 
     /// 设置 API 选项
     pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
-        let arg = match value {
-            Some(v) => format!("-api {}={}", opt.into(), v.into()),
-            None => format!("-api {}", opt.into()),
-        };
-        self.args.push(arg);
+        let option = opt.into();
+        self.args.push("-api".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}={}", option, v.into())),
+            None => self.args.push(option),
+        }
         self
     }
 
@@ -1242,17 +1266,19 @@ impl<'et> BatchQueryBuilder<'et> {
         param: impl Into<String>,
         value: Option<impl Into<String>>,
     ) -> Self {
-        let arg = match value {
-            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
-            None => format!("-userParam {}", param.into()),
-        };
-        self.args.push(arg);
+        let param = param.into();
+        self.args.push("-userParam".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}={}", param, v.into())),
+            None => self.args.push(param),
+        }
         self
     }
 
     /// 设置自定义打印格式
     pub fn print_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-p {}", format.into()));
+        self.args.push("-p".to_string());
+        self.args.push(format.into());
         self
     }
 
@@ -1266,7 +1292,8 @@ impl<'et> BatchQueryBuilder<'et> {
 
     /// 设置列表项分隔符
     pub fn separator(mut self, sep: impl Into<String>) -> Self {
-        self.args.push(format!("-sep {}", sep.into()));
+        self.args.push("-sep".to_string());
+        self.args.push(sep.into());
         self
     }
 
@@ -1330,9 +1357,43 @@ impl<'et> BatchQueryBuilder<'et> {
 
 #[cfg(test)]
 mod tests {
+    use crate::Error;
+
+    #[test]
+    fn test_response_warning_not_error() {
+        let response = crate::Response::new(vec!["Warning: test".to_string()]);
+        assert!(!response.is_error());
+    }
+
     #[test]
     fn test_query_builder_args() {
-        // 这个测试需要 ExifTool 实例，所以只做简单的构建测试
-        // 实际测试需要在集成测试中进行
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let args = exiftool
+            .query("photo.jpg")
+            .charset("utf8")
+            .lang("zh")
+            .coord_format("%.6f")
+            .date_format("%Y-%m-%d")
+            .print_format("$FileName")
+            .separator(",")
+            .api_option("QuickTimeUTC", Some("1"))
+            .user_param("k", Some("v"))
+            .password("p")
+            .build_args(true);
+
+        assert!(args.windows(2).any(|w| w == ["-charset", "utf8"]));
+        assert!(args.windows(2).any(|w| w == ["-lang", "zh"]));
+        assert!(args.windows(2).any(|w| w == ["-c", "%.6f"]));
+        assert!(args.windows(2).any(|w| w == ["-d", "%Y-%m-%d"]));
+        assert!(args.windows(2).any(|w| w == ["-p", "$FileName"]));
+        assert!(args.windows(2).any(|w| w == ["-sep", ","]));
+        assert!(args.windows(2).any(|w| w == ["-api", "QuickTimeUTC=1"]));
+        assert!(args.windows(2).any(|w| w == ["-userParam", "k=v"]));
+        assert!(args.windows(2).any(|w| w == ["-password", "p"]));
     }
 }

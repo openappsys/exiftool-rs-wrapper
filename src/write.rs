@@ -33,6 +33,7 @@ pub struct WriteBuilder<'et> {
     exiftool: &'et ExifTool,
     path: PathBuf,
     tags: HashMap<String, String>,
+    delete_tags: Vec<String>,
     overwrite_original: bool,
     backup: bool,
     output_path: Option<PathBuf>,
@@ -52,6 +53,7 @@ impl<'et> WriteBuilder<'et> {
             exiftool,
             path: path.as_ref().to_path_buf(),
             tags: HashMap::new(),
+            delete_tags: Vec::new(),
             overwrite_original: false,
             backup: true,
             output_path: None,
@@ -86,8 +88,7 @@ impl<'et> WriteBuilder<'et> {
 
     /// 删除标签
     pub fn delete(mut self, tag: impl Into<String>) -> Self {
-        // 删除标签通过设置空值实现
-        self.tags.insert(tag.into(), "".to_string());
+        self.delete_tags.push(tag.into());
         self
     }
 
@@ -153,7 +154,8 @@ impl<'et> WriteBuilder<'et> {
     /// # }
     /// ```
     pub fn write_mode(mut self, mode: WriteMode) -> Self {
-        self.raw_args.push(format!("-wm {}", mode.as_str()));
+        self.raw_args.push("-wm".to_string());
+        self.raw_args.push(mode.as_str().to_string());
         self
     }
 
@@ -182,7 +184,8 @@ impl<'et> WriteBuilder<'et> {
     /// # }
     /// ```
     pub fn password(mut self, passwd: impl Into<String>) -> Self {
-        self.raw_args.push(format!("-password {}", passwd.into()));
+        self.raw_args.push("-password".to_string());
+        self.raw_args.push(passwd.into());
         self
     }
 
@@ -190,7 +193,8 @@ impl<'et> WriteBuilder<'et> {
     ///
     /// 使用 `-sep` 选项设置列表项的分隔符字符串
     pub fn separator(mut self, sep: impl Into<String>) -> Self {
-        self.raw_args.push(format!("-sep {}", sep.into()));
+        self.raw_args.push("-sep".to_string());
+        self.raw_args.push(sep.into());
         self
     }
 
@@ -198,11 +202,12 @@ impl<'et> WriteBuilder<'et> {
     ///
     /// 使用 `-api` 选项设置 ExifTool API 选项
     pub fn api_option(mut self, opt: impl Into<String>, value: Option<impl Into<String>>) -> Self {
-        let arg = match value {
-            Some(v) => format!("-api {}={}", opt.into(), v.into()),
-            None => format!("-api {}", opt.into()),
-        };
-        self.raw_args.push(arg);
+        let option = opt.into();
+        self.raw_args.push("-api".to_string());
+        match value {
+            Some(v) => self.raw_args.push(format!("{}={}", option, v.into())),
+            None => self.raw_args.push(option),
+        }
         self
     }
 
@@ -214,11 +219,12 @@ impl<'et> WriteBuilder<'et> {
         param: impl Into<String>,
         value: Option<impl Into<String>>,
     ) -> Self {
-        let arg = match value {
-            Some(v) => format!("-userParam {}={}", param.into(), v.into()),
-            None => format!("-userParam {}", param.into()),
-        };
-        self.raw_args.push(arg);
+        let param = param.into();
+        self.raw_args.push("-userParam".to_string());
+        match value {
+            Some(v) => self.raw_args.push(format!("{}={}", param, v.into())),
+            None => self.raw_args.push(param),
+        }
         self
     }
 
@@ -421,7 +427,8 @@ impl<'et> WriteBuilder<'et> {
 
         // 条件
         if let Some(ref condition) = self.condition {
-            args.push(format!("-if {}", condition));
+            args.push("-if".to_string());
+            args.push(condition.clone());
         }
 
         // 忽略次要错误
@@ -456,15 +463,14 @@ impl<'et> WriteBuilder<'et> {
         // 原始参数
         args.extend(self.raw_args.clone());
 
+        // 删除标签
+        for tag in &self.delete_tags {
+            args.push(format!("-{}=", tag));
+        }
+
         // 标签写入
         for (tag, value) in &self.tags {
-            if value.is_empty() {
-                // 删除标签
-                args.push(format!("-{}=", tag));
-            } else {
-                // 写入标签
-                args.push(format!("-{}={}", tag, value));
-            }
+            args.push(format!("-{}={}", tag, value));
         }
 
         // 文件路径
@@ -516,10 +522,36 @@ impl WriteResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn test_write_builder_args() {
-        // 基础测试，不依赖 ExifTool 实例
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let args = exiftool
+            .write("photo.jpg")
+            .write_mode(WriteMode::Create)
+            .password("p")
+            .separator(",")
+            .api_option("QuickTimeUTC", Some("1"))
+            .user_param("k", Some("v"))
+            .condition("$FileType eq 'JPEG'")
+            .delete("Comment")
+            .tag("Artist", "Alice")
+            .build_args();
+
+        assert!(args.windows(2).any(|w| w == ["-wm", "c"]));
+        assert!(args.windows(2).any(|w| w == ["-password", "p"]));
+        assert!(args.windows(2).any(|w| w == ["-sep", ","]));
+        assert!(args.windows(2).any(|w| w == ["-api", "QuickTimeUTC=1"]));
+        assert!(args.windows(2).any(|w| w == ["-userParam", "k=v"]));
+        assert!(args.windows(2).any(|w| w == ["-if", "$FileType eq 'JPEG'"]));
+        assert!(args.iter().any(|a| a == "-Comment="));
+        assert!(args.iter().any(|a| a == "-Artist=Alice"));
     }
 
     #[test]

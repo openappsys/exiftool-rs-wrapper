@@ -37,24 +37,8 @@ enum ScriptCommand {
     Delete { path: PathBuf, tag: String },
     /// 批量读取
     BatchRead { paths: Vec<PathBuf> },
-    /// 复制标签
-    #[allow(dead_code)]
-    CopyTags {
-        source: PathBuf,
-        target: PathBuf,
-        #[allow(dead_code)]
-        tags: Vec<String>,
-    },
     /// 打印消息
     Print(String),
-    /// 设置变量
-    #[allow(dead_code)]
-    SetVar {
-        #[allow(dead_code)]
-        name: String,
-        #[allow(dead_code)]
-        value: String,
-    },
 }
 
 impl Default for BatchScript {
@@ -136,26 +120,9 @@ impl BatchScript {
                         });
                     }
                 }
-                "copy" => {
-                    if args.len() >= 3 {
-                        script.commands.push(ScriptCommand::CopyTags {
-                            source: PathBuf::from(args[0]),
-                            target: PathBuf::from(args[1]),
-                            tags: args[2..].iter().map(|s| s.to_string()).collect(),
-                        });
-                    }
-                }
                 "print" => {
                     if !args.is_empty() {
                         script.commands.push(ScriptCommand::Print(args.join(" ")));
-                    }
-                }
-                "set" => {
-                    if args.len() >= 2 {
-                        script.commands.push(ScriptCommand::SetVar {
-                            name: args[0].to_string(),
-                            value: args[1..].join(" "),
-                        });
                     }
                 }
                 "progress" => {
@@ -253,22 +220,8 @@ impl BatchScript {
             ScriptCommand::BatchRead { paths } => {
                 exiftool.query_batch(paths).execute()?;
             }
-            ScriptCommand::CopyTags {
-                source,
-                target,
-                tags: _,
-            } => {
-                exiftool
-                    .write(target)
-                    .copy_from(source)
-                    .overwrite_original(true)
-                    .execute()?;
-            }
             ScriptCommand::Print(msg) => {
                 println!("{}", msg);
-            }
-            ScriptCommand::SetVar { name: _, value: _ } => {
-                // 变量系统待实现
             }
         }
         Ok(())

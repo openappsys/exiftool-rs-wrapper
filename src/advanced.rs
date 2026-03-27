@@ -35,18 +35,8 @@ pub enum TimeUnit {
 }
 
 impl TimeUnit {
-    /// 获取单位缩写
-    #[allow(dead_code)]
-    fn abbreviation(&self) -> &'static str {
-        match self {
-            Self::Years => "y",
-            Self::Months => "m",
-            Self::Days => "d",
-            Self::Hours => "H",
-            Self::Minutes => "M",
-            Self::Seconds => "S",
-        }
-    }
+    // 单位缩写方法已移除（当前未使用）
+    // 如需使用，可添加: fn abbreviation(&self) -> &'static str
 }
 
 /// 日期时间偏移量

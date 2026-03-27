@@ -8,7 +8,7 @@
 
 [中文](README.md) | **English**
 
-> A high-performance, type-safe Rust wrapper for ExifTool with 100% core feature coverage and 2375+ predefined tags (working towards full 18000+ tag support)
+> A well-architected, high-performance, type-safe Rust wrapper for ExifTool with async API support, aiming for 100% ExifTool capability coverage.
 
 ## Introduction
 
@@ -16,12 +16,12 @@
 
 ### Core Features
 
-- **100% Core Feature Coverage**: Complete support for all major ExifTool command-line options and advanced features
+- **High Compatibility Goal**: Continuously improving option and behavior compatibility, aiming for 100% ExifTool support
 - **2375+ Predefined Tags**: Comprehensive tag coverage for EXIF, IPTC, XMP, GPS, and major camera makers (Canon, Nikon, Sony, Fuji, Olympus, Panasonic)
 - **Modular Tag System**: Split into modules by category with feature flags for selective compilation
 - **High Performance**: Uses `-stay_open` mode to keep the process running, avoiding startup overhead
 - **Type Safety**: Complete tag type system with strongly-typed APIs
-- **Async Support**: Tokio-based async API (optional feature)
+- **Async Support**: Tokio-based async API (uses `spawn_blocking` to avoid blocking runtime threads)
 - **Connection Pool**: Built-in connection pool for high-concurrency scenarios
 - **Builder Pattern**: Fluent API design with method chaining
 
@@ -566,6 +566,9 @@ exiftool-rs-wrapper read photo.jpg
 
 # Write tags
 exiftool-rs-wrapper write photo.jpg Copyright "© 2026"
+
+# Explicitly overwrite original file (default keeps backup)
+exiftool-rs-wrapper write photo.jpg Copyright "© 2026" --overwrite
 
 # Delete tags
 exiftool-rs-wrapper delete photo.jpg GPSPosition

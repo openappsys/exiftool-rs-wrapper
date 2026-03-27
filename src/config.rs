@@ -3,7 +3,7 @@
 //! 支持配置文件加载、自定义标签定义、校验和计算
 
 use crate::ExifTool;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::types::TagId;
 use std::path::{Path, PathBuf};
 
@@ -105,9 +105,6 @@ impl DiffResult {
 
 /// 配置操作 trait
 pub trait ConfigOperations {
-    /// 加载配置文件
-    fn with_config<P: AsRef<Path>>(self, config_path: P) -> Self;
-
     /// 计算校验和
     fn calculate_checksum<P: AsRef<Path>>(
         &self,
@@ -142,130 +139,7 @@ pub trait ConfigOperations {
     ) -> Result<DiffResult>;
 }
 
-/// 配置加载器
-#[derive(Debug, Clone)]
-pub struct ConfigLoader {
-    config_path: Option<PathBuf>,
-    #[allow(dead_code)]
-    custom_tags: Vec<CustomTag>,
-}
-
-impl Default for ConfigLoader {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ConfigLoader {
-    /// 创建新的配置加载器
-    pub fn new() -> Self {
-        Self {
-            config_path: None,
-            custom_tags: Vec::new(),
-        }
-    }
-
-    /// 从文件加载配置
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let path = path.as_ref();
-        let content = std::fs::read_to_string(path).map_err(Error::Io)?;
-
-        let mut loader = Self::new();
-        loader.config_path = Some(path.to_path_buf());
-        loader.parse_config(&content)?;
-
-        Ok(loader)
-    }
-
-    /// 解析配置内容
-    fn parse_config(&mut self, content: &str) -> Result<()> {
-        for line in content.lines() {
-            let line = line.trim();
-
-            // 跳过空行和注释
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
-
-            // 解析自定义标签定义
-            // 格式: %Image::ExifTool::UserDefined::Main = { ... }
-            if line.starts_with("%Image::ExifTool::UserDefined") {
-                self.parse_custom_tag_section(content)?;
-                break;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// 解析自定义标签段
-    fn parse_custom_tag_section(&mut self, _content: &str) -> Result<()> {
-        // 解析 Perl 配置语法中的自定义标签定义
-        // 这里简化为空实现，完整实现需要解析 Perl 哈希结构
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    /// 添加自定义标签
-    pub fn add_custom_tag(&mut self, tag: CustomTag) {
-        self.custom_tags.push(tag);
-    }
-
-    #[allow(dead_code)]
-    /// 获取自定义标签
-    pub fn custom_tags(&self) -> &[CustomTag] {
-        &self.custom_tags
-    }
-
-    #[allow(dead_code)]
-    /// 获取配置文件路径
-    pub fn config_path(&self) -> Option<&Path> {
-        self.config_path.as_deref()
-    }
-}
-
-/// 自定义标签定义
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct CustomTag {
-    /// 标签 ID（十六进制）
-    pub id: String,
-    /// 标签名称
-    pub name: String,
-    /// 标签组（如 EXIF, IPTC, XMP）
-    pub group: String,
-    /// 数据类型
-    pub data_type: TagDataType,
-    /// 是否可写
-    pub writable: bool,
-    /// 描述信息
-    pub description: Option<String>,
-}
-
-/// 标签数据类型
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TagDataType {
-    #[allow(dead_code)]
-    String,
-    #[allow(dead_code)]
-    Integer,
-    #[allow(dead_code)]
-    Rational,
-    #[allow(dead_code)]
-    Binary,
-    #[allow(dead_code)]
-    Undefined,
-}
-
 impl ConfigOperations for ExifTool {
-    fn with_config<P: AsRef<Path>>(self, config_path: P) -> Self {
-        // 保存配置路径，后续在 execute 时使用 -config 参数
-        // 实际实现需要在 ExifTool 结构体中添加 config 字段
-        // 这里暂时返回 self，标记为需要改进
-        let _ = ConfigLoader::from_file(config_path);
-        self
-    }
-
     fn calculate_checksum<P: AsRef<Path>>(
         &self,
         path: P,
@@ -423,14 +297,18 @@ pub trait HexDumpOperations {
 
 impl HexDumpOperations for ExifTool {
     fn hex_dump<P: AsRef<Path>>(&self, path: P, options: &HexDumpOptions) -> Result<String> {
-        let mut args = vec!["-H".to_string()];
+        let mut args = Vec::new();
 
         if let Some(offset) = options.start_offset {
-            args.push(format!("-ge {}", offset));
+            args.push(format!("-htmlDump{}", offset));
+        } else {
+            args.push("-htmlDump".to_string());
         }
 
-        if let Some(length) = options.length {
-            args.push(format!("-le {}", length));
+        if options.length.is_some() {
+            return Err(crate::error::Error::invalid_arg(
+                "hex_dump 的 length 选项当前不受 ExifTool 原生命令直接支持",
+            ));
         }
 
         args.push(path.as_ref().to_string_lossy().to_string());

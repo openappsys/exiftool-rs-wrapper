@@ -4,14 +4,18 @@ use crate::error::{Error, Result};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use tracing::{debug, info, warn};
+
+const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// ExifTool 进程内部状态
 pub struct ExifToolInner {
     process: Child,
     stdin: BufWriter<ChildStdin>,
-    stdout: BufReader<ChildStdout>,
+    stdout_rx: Receiver<String>,
+    response_timeout: Duration,
 }
 
 impl std::fmt::Debug for ExifToolInner {
@@ -25,11 +29,19 @@ impl std::fmt::Debug for ExifToolInner {
 impl ExifToolInner {
     /// 启动新的 ExifTool 进程（-stay_open 模式，从 PATH 查找）
     pub fn new() -> Result<Self> {
-        Self::with_executable("exiftool")
+        Self::with_executable_and_timeout("exiftool", DEFAULT_RESPONSE_TIMEOUT)
     }
 
     /// 使用指定的可执行文件路径启动 ExifTool 进程
     pub fn with_executable<P: AsRef<std::ffi::OsStr>>(exe: P) -> Result<Self> {
+        Self::with_executable_and_timeout(exe, DEFAULT_RESPONSE_TIMEOUT)
+    }
+
+    /// 使用指定可执行文件和响应超时启动 ExifTool 进程
+    pub fn with_executable_and_timeout<P: AsRef<std::ffi::OsStr>>(
+        exe: P,
+        response_timeout: Duration,
+    ) -> Result<Self> {
         info!("Starting ExifTool process with -stay_open mode");
 
         let mut process = Command::new(exe)
@@ -39,7 +51,7 @@ impl ExifToolInner {
             .arg("-")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()
             .map_err(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
@@ -59,10 +71,13 @@ impl ExifToolInner {
             .take()
             .ok_or_else(|| Error::process("Failed to capture stdout"))?;
 
+        let stdout_rx = Self::spawn_stdout_reader(stdout);
+
         let mut inner = Self {
             process,
             stdin: BufWriter::new(stdin),
-            stdout: BufReader::new(stdout),
+            stdout_rx,
+            response_timeout,
         };
 
         // 验证进程是否正常工作
@@ -115,21 +130,30 @@ impl ExifToolInner {
     /// 读取响应（直到遇到 {ready}）
     pub fn read_response(&mut self) -> Result<Response> {
         let mut lines = Vec::new();
-        let mut buffer = String::new();
 
         loop {
-            buffer.clear();
-            let bytes_read = self.stdout.read_line(&mut buffer)?;
-
-            if bytes_read == 0 {
-                // EOF reached unexpectedly
-                return Err(Error::process("Unexpected EOF from ExifTool process"));
-            }
+            let buffer = match self.stdout_rx.recv_timeout(self.response_timeout) {
+                Ok(line) => line,
+                Err(RecvTimeoutError::Timeout) => return Err(Error::Timeout),
+                Err(RecvTimeoutError::Disconnected) => {
+                    return Err(Error::process("Unexpected EOF from ExifTool process"));
+                }
+            };
 
             let trimmed = buffer.trim();
             debug!("Received line: {}", trimmed);
 
-            if trimmed == "{ready}" {
+            if trimmed.starts_with("{ready") && trimmed.ends_with('}') {
+                if trimmed == "{ready}" {
+                    break;
+                }
+
+                let code_text = &trimmed[6..trimmed.len() - 1];
+                if !code_text.is_empty() {
+                    let message = format!("ExifTool 返回错误结束标记: {}", trimmed);
+                    return Err(Error::process(message));
+                }
+
                 break;
             }
 
@@ -212,6 +236,33 @@ impl ExifToolInner {
     }
 }
 
+impl ExifToolInner {
+    /// 启动 stdout 读取线程，逐行转发到通道
+    fn spawn_stdout_reader(stdout: ChildStdout) -> Receiver<String> {
+        let (tx, rx) = mpsc::channel();
+
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            let mut buffer = String::new();
+
+            loop {
+                buffer.clear();
+                match reader.read_line(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(_) => {
+                        if tx.send(buffer.clone()).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+
+        rx
+    }
+}
+
 impl Drop for ExifToolInner {
     fn drop(&mut self) {
         if let Err(e) = self.close() {
@@ -250,9 +301,7 @@ impl Response {
 
     /// 检查是否有错误
     pub fn is_error(&self) -> bool {
-        self.lines
-            .iter()
-            .any(|line| line.contains("Error:") || line.contains("Warning:"))
+        self.lines.iter().any(|line| line.contains("Error:"))
     }
 
     /// 获取错误信息
@@ -285,6 +334,15 @@ mod tests {
 
         assert!(response.is_error());
         assert!(response.error_message().is_some());
+    }
+
+    #[test]
+    fn test_response_warning_not_error() {
+        let lines = vec!["Warning: minor issue".to_string()];
+        let response = Response::new(lines);
+
+        assert!(!response.is_error());
+        assert!(response.error_message().is_none());
     }
 
     #[test]
