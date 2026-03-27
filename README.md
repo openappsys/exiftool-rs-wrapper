@@ -92,10 +92,10 @@ exiftool -ver
 
 ```toml
 [dependencies]
-exiftool-rs-wrapper = "0.1.3"
+exiftool-rs-wrapper = "0.1.4"
 
 # 启用异步支持（可选）
-exiftool-rs-wrapper = { version = "0.1.3", features = ["async"] }
+exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
 ```
 
 ## 快速开始

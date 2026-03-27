@@ -49,6 +49,10 @@ mod stream;
 mod types;
 mod write;
 
+/// Serde 结构体模块
+#[cfg(feature = "serde-structs")]
+pub mod structs;
+
 /// 高级功能模块
 pub mod advanced;
 
@@ -125,6 +129,43 @@ pub struct ExifTool {
     inner: Arc<Mutex<ExifToolInner>>,
 }
 
+/// ExifTool 构建器包装器
+pub struct ExifToolBuilderWrapper {
+    executable: Option<std::path::PathBuf>,
+}
+
+impl ExifToolBuilderWrapper {
+    /// 创建新的构建器
+    pub fn new() -> Self {
+        Self { executable: None }
+    }
+
+    /// 指定 exiftool 可执行文件路径
+    pub fn executable<P: Into<std::path::PathBuf>>(mut self, path: P) -> Self {
+        self.executable = Some(path.into());
+        self
+    }
+
+    /// 构建 ExifTool 实例
+    pub fn build(self) -> Result<ExifTool> {
+        let inner = if let Some(exe) = self.executable {
+            ExifToolInner::with_executable(exe)?
+        } else {
+            ExifToolInner::new()?
+        };
+
+        Ok(ExifTool {
+            inner: Arc::new(Mutex::new(inner)),
+        })
+    }
+}
+
+impl Default for ExifToolBuilderWrapper {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExifTool {
     /// 创建新的 ExifTool 实例
     ///
@@ -150,6 +191,27 @@ impl ExifTool {
         Ok(Self {
             inner: Arc::new(Mutex::new(inner)),
         })
+    }
+
+    /// 创建 ExifTool 构建器
+    ///
+    /// 使用 Builder 模式可以更灵活地配置 ExifTool 实例。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // 使用自定义路径
+    /// let exiftool = ExifTool::builder()
+    ///     .executable("/usr/local/bin/exiftool")
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn builder() -> ExifToolBuilderWrapper {
+        ExifToolBuilderWrapper::new()
     }
 
     /// 查询单个文件的元数据
@@ -280,6 +342,40 @@ impl ExifTool {
         let json = serde_json::to_value(value)?;
         let result: T = serde_json::from_value(json)?;
 
+        Ok(result)
+    }
+
+    /// 读取文件元数据并反序列化为结构体
+    ///
+    /// 需要启用 `serde-structs` feature。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    /// use exiftool_rs_wrapper::structs::Metadata;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    /// let meta: Metadata = exiftool.read_struct("photo.jpg")?;
+    /// println!("File: {}", meta.file.file_name);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "serde-structs")]
+    pub fn read_struct<T, P>(&self, path: P) -> Result<T>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        P: AsRef<Path>,
+    {
+        // 获取 JSON 格式的原始输出
+        let output = self
+            .query(path)
+            .arg("-json")
+            .arg("-g2")
+            .execute_text()?;
+
+        let result: T = serde_json::from_str(&output)?;
         Ok(result)
     }
 

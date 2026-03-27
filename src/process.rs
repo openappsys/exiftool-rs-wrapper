@@ -2,9 +2,35 @@
 
 use crate::error::{Error, Result};
 use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Duration;
 use tracing::{debug, info, warn};
+
+/// ExifTool 进程构建器
+#[derive(Debug, Default)]
+pub struct ExifToolBuilder {
+    executable: Option<PathBuf>,
+}
+
+impl ExifToolBuilder {
+    /// 创建新的构建器
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 指定 exiftool 可执行文件路径
+    pub fn executable<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.executable = Some(path.into());
+        self
+    }
+
+    /// 构建 ExifTool 进程
+    pub fn build(self) -> Result<ExifToolInner> {
+        let exe = self.executable.unwrap_or_else(|| "exiftool".into());
+        ExifToolInner::with_executable(exe)
+    }
+}
 
 /// ExifTool 进程内部状态
 pub struct ExifToolInner {
@@ -22,11 +48,16 @@ impl std::fmt::Debug for ExifToolInner {
 }
 
 impl ExifToolInner {
-    /// 启动新的 ExifTool 进程（-stay_open 模式）
+    /// 启动新的 ExifTool 进程（-stay_open 模式，从 PATH 查找）
     pub fn new() -> Result<Self> {
+        Self::with_executable("exiftool")
+    }
+
+    /// 使用指定的可执行文件路径启动 ExifTool 进程
+    pub fn with_executable<P: AsRef<std::ffi::OsStr>>(exe: P) -> Result<Self> {
         info!("Starting ExifTool process with -stay_open mode");
 
-        let mut process = Command::new("exiftool")
+        let mut process = Command::new(exe)
             .arg("-stay_open")
             .arg("True")
             .arg("-@")
