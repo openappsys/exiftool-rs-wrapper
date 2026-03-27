@@ -106,6 +106,14 @@ exiftool-rs-wrapper = "0.1.4"
 # Enable async support (optional)
 exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
 
+# Custom ExifTool path
+let exiftool = ExifTool::builder()
+    .executable("/usr/local/bin/exiftool")
+    .build()?;
+
+# Enable Serde struct support
+exiftool-rs-wrapper = { version = "0.1.4", features = ["serde-structs"] }
+
 # Minimal build - only basic EXIF tags
 exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif"] }
 

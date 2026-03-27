@@ -96,6 +96,15 @@ exiftool-rs-wrapper = "0.1.4"
 
 # 启用异步支持（可选）
 exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
+
+# 指定自定义 ExifTool 路径
+exiftool-rs-wrapper = "0.1.4"
+let exiftool = Exiftool::builder()
+    .executable("/usr/local/bin/exiftool")
+    .build()?;
+
+# 启用 Serde 结构体支持
+exiftool-rs-wrapper = { version = "0.1.4", features = ["serde-structs"] }
 ```
 
 ## 快速开始
@@ -110,7 +119,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
     // 读取文件元数据
-    let metadata = exiftool.query("photo.jpg").execute()?;
+    let metadata = exiftool.query("photo.jpg").execute()?
+    
     
     // 访问特定标签
     if let Some(make) = metadata.get("Make") {
