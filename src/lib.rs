@@ -48,6 +48,7 @@ mod retry;
 mod stream;
 mod types;
 mod write;
+mod tags;
 
 /// Serde 结构体模块
 #[cfg(feature = "serde-structs")]
@@ -560,4 +561,3 @@ mod tests {
         }
     }
 }
-mod tags;
