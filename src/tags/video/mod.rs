@@ -1,3 +1,5 @@
-//! 视频元数据标签
+//! 视频元数据标签（QuickTime、MP4、Matroska、AVI、MPEG 等）
 
-// 待完善：QuickTime/MOV、MP4、MKV、AVI、MPEG、WebM 等
+pub mod quicktime;
+
+pub use quicktime::*;

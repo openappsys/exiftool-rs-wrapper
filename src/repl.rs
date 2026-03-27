@@ -2,8 +2,8 @@
 //!
 //! 提供交互式的 ExifTool shell
 
-use crate::error::Result;
 use crate::ExifTool;
+use crate::error::Result;
 use std::io::{self, Write};
 
 /// REPL 交互式 shell

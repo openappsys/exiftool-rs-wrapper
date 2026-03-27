@@ -63,8 +63,8 @@ other = []
 # 标准元数据（不含厂商）
 standard = ["exif", "iptc", "xmp", "gps"]
 
-# 常用厂商
-vendors-common = ["canon", "nikon", "sony"]
+# 常用厂商（自动包含标准元数据）
+vendors-common = ["canon", "nikon", "sony", "standard"]
 
 # 图像处理专用
 image = ["standard", "vendors-common"]
@@ -88,7 +88,7 @@ balanced = ["standard", "vendors-common"]
 serde-structs = []
 
 # 完整功能（所有标签）
-full = ["balanced", "fuji", "olympus", "panasonic", "other", "serde-structs"]
+full = ["balanced", "fuji", "olympus", "panasonic", "video", "audio", "image-formats", "other", "serde-structs"]
 
 [dev-dependencies]
 tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }

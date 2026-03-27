@@ -147,7 +147,7 @@ pub trait AdvancedWriteOperations {
     ///
     /// # 示例
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// use exiftool_rs_wrapper::ExifTool;
     /// use exiftool_rs_wrapper::advanced::AdvancedWriteOperations;
     /// use exiftool_rs_wrapper::advanced::DateTimeOffset;

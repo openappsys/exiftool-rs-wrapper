@@ -46,9 +46,9 @@ mod query;
 mod repl;
 mod retry;
 mod stream;
+mod tags;
 mod types;
 mod write;
-mod tags;
 
 /// Serde 结构体模块
 #[cfg(feature = "serde-structs")]
@@ -370,18 +370,14 @@ impl ExifTool {
         P: AsRef<Path>,
     {
         // 获取 JSON 格式的原始输出
-        let output = self
-            .query(path)
-            .arg("-json")
-            .arg("-g2")
-            .execute_text()?;
+        let output = self.query(path).arg("-json").arg("-g2").execute_text()?;
 
         // ExifTool 的 JSON 输出是数组，需要提取第一个元素
         let json_array: Vec<serde_json::Value> = serde_json::from_str(&output)?;
         if json_array.is_empty() {
             return Err(Error::process("Empty JSON response from ExifTool"));
         }
-        
+
         let result: T = serde_json::from_value(json_array[0].clone())?;
         Ok(result)
     }
