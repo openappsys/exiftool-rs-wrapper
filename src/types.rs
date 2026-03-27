@@ -705,6 +705,10 @@ impl TagId {
     pub const CAMERA_CALIBRATION_1_EXT: Self = Self("CameraCalibration1");
     pub const CAMERA_CALIBRATION_2_EXT: Self = Self("CameraCalibration2");
     pub const ANALOG_BALANCE_EXT: Self = Self("AnalogBalance");
+
+    // === Other Tags (16609 tags) - feature = "other" ===
+    // Note: Full other.rs integration in progress
+    // All 16609 other tags available in src/tags/other.rs
 }
 
 impl fmt::Display for TagId {
