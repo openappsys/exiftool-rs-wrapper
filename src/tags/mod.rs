@@ -52,6 +52,9 @@ pub mod audio;
 #[cfg(feature = "other")]
 pub mod other;
 
+// 统一标签路由模块（解决重复标签的选择困惑）
+pub mod unified;
+
 // 重新导出
 pub use common::*;
 

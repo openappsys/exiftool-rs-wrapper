@@ -14,8 +14,8 @@
 //! cargo run --example serde_example --features serde-structs
 //! ```
 
-use exiftool_rs_wrapper::structs::{Metadata, SimpleMetadata};
 use exiftool_rs_wrapper::ExifTool;
+use exiftool_rs_wrapper::structs::{Metadata, SimpleMetadata};
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -123,7 +123,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
 
 /// 查找测试图片
 fn find_test_image() -> Option<PathBuf> {

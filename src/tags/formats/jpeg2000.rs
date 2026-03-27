@@ -1,0 +1,43 @@
+//! JPEG2000 图像格式标签
+
+use crate::TagId;
+
+pub const BINARY_DATA: TagId = TagId("BinaryData");
+pub const BINARY_DATA_TYPE: TagId = TagId("BinaryDataType");
+pub const C2_P_A_SALT_HASH: TagId = TagId("C2PASaltHash");
+pub const CAPTURE_X_RESOLUTION: TagId = TagId("CaptureXResolution");
+pub const CAPTURE_X_RESOLUTION_UNIT: TagId = TagId("CaptureXResolutionUnit");
+pub const CAPTURE_Y_RESOLUTION: TagId = TagId("CaptureYResolution");
+pub const CAPTURE_Y_RESOLUTION_UNIT: TagId = TagId("CaptureYResolutionUnit");
+pub const COLOR_SPEC_APPROXIMATION: TagId = TagId("ColorSpecApproximation");
+pub const COLOR_SPEC_DATA: TagId = TagId("ColorSpecData");
+pub const COLOR_SPEC_METHOD: TagId = TagId("ColorSpecMethod");
+pub const COLOR_SPEC_PRECEDENCE: TagId = TagId("ColorSpecPrecedence");
+pub const COMPATIBLE_BRANDS: TagId = TagId("CompatibleBrands");
+pub const COMPRESSION: TagId = TagId("Compression");
+pub const CONTIGUOUS_CODESTREAM: TagId = TagId("ContiguousCodestream");
+pub const DISPLAY_X_RESOLUTION: TagId = TagId("DisplayXResolution");
+pub const DISPLAY_X_RESOLUTION_UNIT: TagId = TagId("DisplayXResolutionUnit");
+pub const DISPLAY_Y_RESOLUTION: TagId = TagId("DisplayYResolution");
+pub const DISPLAY_Y_RESOLUTION_UNIT: TagId = TagId("DisplayYResolutionUnit");
+pub const E_X_I_F: TagId = TagId("EXIF");
+pub const FRAGMENT_TABLE: TagId = TagId("FragmentTable");
+pub const GAIN_MAP_IMAGE: TagId = TagId("GainMapImage");
+pub const I_C_C__PROFILE: TagId = TagId("ICC_Profile");
+pub const J_U_M_B_F: TagId = TagId("JUMBF");
+pub const J_U_M_D_I_D: TagId = TagId("JUMDID");
+pub const J_U_M_D_LABEL: TagId = TagId("JUMDLabel");
+pub const J_U_M_D_SIGNATURE: TagId = TagId("JUMDSignature");
+pub const J_U_M_D_TOGGLES: TagId = TagId("JUMDToggles");
+pub const J_U_M_D_TYPE: TagId = TagId("JUMDType");
+pub const J_X_L_CODESTREAM: TagId = TagId("JXLCodestream");
+pub const LABEL: TagId = TagId("Label");
+pub const MAJOR_BRAND: TagId = TagId("MajorBrand");
+pub const MINOR_VERSION: TagId = TagId("MinorVersion");
+pub const NUMBER_OF_COMPONENTS: TagId = TagId("NumberOfComponents");
+pub const PARTIAL_J_X_L_CODESTREAM: TagId = TagId("PartialJXLCodestream");
+pub const U_R_L: TagId = TagId("URL");
+pub const U_U_I_D__SIGNATURE: TagId = TagId("UUID-Signature");
+pub const U_U_I_D__UNKNOWN: TagId = TagId("UUID-Unknown");
+pub const X_M_L: TagId = TagId("XML");
+pub const X_M_P: TagId = TagId("XMP");
