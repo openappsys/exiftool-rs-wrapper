@@ -129,12 +129,14 @@ use tracing::{debug, info};
 #[derive(Debug, Clone)]
 pub struct ExifTool {
     inner: Arc<Mutex<ExifToolInner>>,
+    global_args: Arc<Vec<String>>,
 }
 
 /// ExifTool 构建器
 pub struct ExifToolBuilder {
     executable: Option<std::path::PathBuf>,
     response_timeout: Option<Duration>,
+    config_path: Option<std::path::PathBuf>,
 }
 
 impl ExifToolBuilder {
@@ -143,6 +145,7 @@ impl ExifToolBuilder {
         Self {
             executable: None,
             response_timeout: None,
+            config_path: None,
         }
     }
 
@@ -158,6 +161,12 @@ impl ExifToolBuilder {
         self
     }
 
+    /// 指定 ExifTool 配置文件路径（等价于 `-config`）
+    pub fn config<P: Into<std::path::PathBuf>>(mut self, path: P) -> Self {
+        self.config_path = Some(path.into());
+        self
+    }
+
     /// 构建 ExifTool 实例
     pub fn build(self) -> Result<ExifTool> {
         let timeout = self
@@ -170,8 +179,15 @@ impl ExifToolBuilder {
             ExifToolInner::with_executable_and_timeout("exiftool", timeout)?
         };
 
+        let mut global_args = Vec::new();
+        if let Some(config_path) = self.config_path {
+            global_args.push("-config".to_string());
+            global_args.push(config_path.to_string_lossy().to_string());
+        }
+
         Ok(ExifTool {
             inner: Arc::new(Mutex::new(inner)),
+            global_args: Arc::new(global_args),
         })
     }
 }
@@ -206,6 +222,7 @@ impl ExifTool {
 
         Ok(Self {
             inner: Arc::new(Mutex::new(inner)),
+            global_args: Arc::new(Vec::new()),
         })
     }
 
@@ -228,6 +245,18 @@ impl ExifTool {
     /// ```
     pub fn builder() -> ExifToolBuilder {
         ExifToolBuilder::new()
+    }
+
+    /// 基于当前实例附加配置文件参数（`-config`）
+    pub fn with_config<P: AsRef<Path>>(&self, path: P) -> Self {
+        let mut global_args = self.global_args.as_ref().clone();
+        global_args.push("-config".to_string());
+        global_args.push(path.as_ref().to_string_lossy().to_string());
+
+        Self {
+            inner: Arc::clone(&self.inner),
+            global_args: Arc::new(global_args),
+        }
     }
 
     /// 查询单个文件的元数据
@@ -448,13 +477,18 @@ impl ExifTool {
     /// # 安全性
     ///
     /// 谨慎使用此功能，确保参数不包含恶意输入。
+    pub fn execute<S: AsRef<str>>(&self, args: &[S]) -> Result<Response> {
+        self.execute_raw(args)
+    }
+
     pub(crate) fn execute_raw(&self, args: &[impl AsRef<str>]) -> Result<Response> {
         debug!("Executing raw command with {} args", args.len());
 
-        let args: Vec<String> = args.iter().map(|a| a.as_ref().to_string()).collect();
+        let mut merged_args = self.global_args.as_ref().clone();
+        merged_args.extend(args.iter().map(|a| a.as_ref().to_string()));
 
         let mut inner = self.inner.lock()?;
-        inner.execute(&args)
+        inner.execute(&merged_args)
     }
 
     /// 关闭 ExifTool 进程
@@ -531,6 +565,11 @@ impl ExifTool {
         self.execute_raw(&args)?;
         Ok(())
     }
+
+    #[cfg(test)]
+    pub(crate) fn debug_global_args(&self) -> Vec<String> {
+        self.global_args.as_ref().clone()
+    }
 }
 
 #[cfg(test)]
@@ -564,5 +603,46 @@ mod tests {
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_builder_with_config_args() {
+        let et = match ExifTool::builder()
+            .config("/tmp/exiftool-test.config")
+            .build()
+        {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let args = et.debug_global_args();
+        assert_eq!(args, vec!["-config", "/tmp/exiftool-test.config"]);
+    }
+
+    #[test]
+    fn test_with_config_clone_args() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let configured = et.with_config("/tmp/exiftool-test.config");
+        let args = configured.debug_global_args();
+        assert_eq!(args, vec!["-config", "/tmp/exiftool-test.config"]);
+    }
+
+    #[test]
+    fn test_public_execute_raw_passthrough() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let response = et.execute(&["-ver"]).expect("execute should succeed");
+        let version = response.text().trim().to_string();
+        assert!(!version.is_empty());
     }
 }

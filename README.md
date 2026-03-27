@@ -8,7 +8,7 @@
 
 **中文** | [English](README-EN.md)
 
-> 一个架构优良、高性能、类型安全的 Rust ExifTool 封装库，支持异步 API，力争对 ExifTool 能力实现 100% 覆盖。
+> 致力于构建一个架构优雅、高性能且类型安全的 ExifTool Rust 封装库，提供全异步 API 支持，并力求实现对 ExifTool 功能的 100% 覆盖。
 
 ## 简介
 
@@ -62,6 +62,18 @@
 - 批量操作优化
 - 流式处理大文件
 
+### 兼容性报告（100% 目标证据）
+
+本项目提供自动化兼容性报告，用于量化与 ExifTool 的能力覆盖差距：
+
+```bash
+./scripts/generate_capability_report.sh
+```
+
+输出文件：
+- `target/compatibility/capability-report.json`
+- `target/compatibility/exiftool-version.txt`
+
 ## 安装
 
 ### 1. 安装 ExifTool
@@ -97,14 +109,17 @@ exiftool-rs-wrapper = "0.1.4"
 # 启用异步支持（可选）
 exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
 
-# 指定自定义 ExifTool 路径
-exiftool-rs-wrapper = "0.1.4"
-let exiftool = Exiftool::builder()
-    .executable("/usr/local/bin/exiftool")
-    .build()?;
-
 # 启用 Serde 结构体支持
 exiftool-rs-wrapper = { version = "0.1.4", features = ["serde-structs"] }
+```
+
+指定自定义 ExifTool 路径与配置文件：
+
+```rust
+let exiftool = ExifTool::builder()
+    .executable("/usr/local/bin/exiftool")
+    .config("/path/to/.ExifTool_config")
+    .build()?;
 ```
 
 ## 快速开始

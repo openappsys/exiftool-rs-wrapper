@@ -105,6 +105,9 @@ impl DiffResult {
 
 /// 配置操作 trait
 pub trait ConfigOperations {
+    /// 加载配置文件（`-config`）
+    fn with_config<P: AsRef<Path>>(&self, config_path: P) -> ExifTool;
+
     /// 计算校验和
     fn calculate_checksum<P: AsRef<Path>>(
         &self,
@@ -140,6 +143,10 @@ pub trait ConfigOperations {
 }
 
 impl ConfigOperations for ExifTool {
+    fn with_config<P: AsRef<Path>>(&self, config_path: P) -> ExifTool {
+        ExifTool::with_config(self, config_path)
+    }
+
     fn calculate_checksum<P: AsRef<Path>>(
         &self,
         path: P,

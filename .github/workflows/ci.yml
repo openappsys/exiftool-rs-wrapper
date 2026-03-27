@@ -180,6 +180,52 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+  # ExifTool 兼容性报告
+  compatibility-report:
+    name: 兼容性报告 ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libimage-exiftool-perl
+
+      - name: 安装 ExifTool (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install exiftool
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-compat-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 运行兼容性报告测试
+        run: cargo test --test compatibility_report -- --nocapture
+
+      - name: 记录 ExifTool 版本
+        run: exiftool -ver > target/compatibility/exiftool-version.txt
+
+      - name: 上传兼容性报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-report-${{ matrix.os }}
+          path: |
+            target/compatibility/capability-report.json
+            target/compatibility/capability-report.md
+            target/compatibility/exiftool-version.txt
+
   # 依赖检查
   audit:
     name: 安全审计
@@ -196,7 +242,7 @@ jobs:
   # 失败通知
   notify:
     name: 失败通知
-    needs: [fmt, clippy, test, coverage, doc, audit]
+    needs: [fmt, clippy, test, coverage, doc, compatibility-report, audit]
     runs-on: ubuntu-latest
     if: failure()
     steps:

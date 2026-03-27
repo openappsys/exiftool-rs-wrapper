@@ -30,3 +30,20 @@
 - 这些脚本仅在开发时使用，不会被打包到发布版本中
 - 运行脚本需要本地安装 ExifTool
 - 生成的代码需要手动审查后插入到 `src/types.rs`
+
+### generate_capability_report.sh
+**用途**: 生成 ExifTool 兼容性能力报告（100% 目标证据）
+
+**用法**:
+```bash
+./scripts/generate_capability_report.sh
+```
+
+**输出**:
+- `target/compatibility/capability-report.json`
+- `target/compatibility/exiftool-version.txt`
+
+**使用场景**:
+- 评估当前版本与 ExifTool 能力差距
+- CI 产出兼容性报告工件
+- 发布前验证兼容性基线

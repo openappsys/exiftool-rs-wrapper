@@ -17,11 +17,16 @@
 - 连接池新增 `acquire_timeout`，批处理改为受控并发 worker 模式
 - CLI 升级为 `clap` 参数解析，写/删/拷默认保留备份，`--overwrite` 显式覆盖
 - 移除可能 panic 的 `Default` 实现（`ExifTool` 与 `AsyncExifTool`）
+- 新增 `-config` 生效链路：支持 `ExifTool::builder().config(...)` 与实例级 `with_config(...)`
+- 新增公共透传执行 API：`ExifTool::execute(...)`，用于未显式封装参数的原生能力调用
+- 新增兼容性报告体系：`tests/compatibility_report.rs` + `tests/compatibility/capability_baseline.json`
+- 新增本地报告脚本：`scripts/generate_capability_report.sh`
+- CI 新增兼容性报告任务并上传工件
 
 ### 修复
 
 - 修复 `config::hex_dump` 使用无效参数的问题
-- 移除无效配置入口（`with_config` 空实现）以避免误导 API 语义
+- 配置能力改为真实生效实现，不再是空实现占位
 
 ### 测试
 

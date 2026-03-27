@@ -8,7 +8,7 @@
 
 [中文](README.md) | **English**
 
-> A well-architected, high-performance, type-safe Rust wrapper for ExifTool with async API support, aiming for 100% ExifTool capability coverage.
+> Aims to build an elegantly architected, high-performance, and type-safe Rust wrapper for ExifTool, featuring full async API support and striving for 100% functional coverage.
 
 ## Introduction
 
@@ -71,6 +71,18 @@
 - Batch operation optimization
 - Streaming for large files
 
+### Compatibility Report (Evidence for 100% Goal)
+
+The project includes an automated compatibility report to quantify capability coverage against ExifTool:
+
+```bash
+./scripts/generate_capability_report.sh
+```
+
+Outputs:
+- `target/compatibility/capability-report.json`
+- `target/compatibility/exiftool-version.txt`
+
 ## Installation
 
 ### 1. Install ExifTool
@@ -106,11 +118,6 @@ exiftool-rs-wrapper = "0.1.4"
 # Enable async support (optional)
 exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
 
-# Custom ExifTool path
-let exiftool = ExifTool::builder()
-    .executable("/usr/local/bin/exiftool")
-    .build()?;
-
 # Enable Serde struct support
 exiftool-rs-wrapper = { version = "0.1.4", features = ["serde-structs"] }
 
@@ -122,6 +129,15 @@ exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = 
 
 # Specific vendors only
 exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif", "canon", "nikon"] }
+```
+
+Custom ExifTool executable and config file:
+
+```rust
+let exiftool = ExifTool::builder()
+    .executable("/usr/local/bin/exiftool")
+    .config("/path/to/.ExifTool_config")
+    .build()?;
 ```
 
 ### Available Features
