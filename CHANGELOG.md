@@ -7,6 +7,18 @@
 
 ## [未发布]
 
+## [0.1.4] - 2026-03-27
+
+### 新增
+
+- 支持通过 Builder 模式自定义 ExifTool 可执行文件路径
+- 新增 `serde-structs` feature，支持通过 serde 反序列化元数据到结构体
+- 添加常用元数据结构体（Metadata、FileInfo、ExifInfo、GpsInfo 等）
+
+### 变更
+
+- `serde` 和 `serde_json` 改为非可选依赖（始终启用）
+
 ## [0.1.3] - 2026-03-27
 
 ### 新增
@@ -49,6 +61,7 @@
 - `default`: 同步 API
 - `async`: 异步 API 支持（依赖 tokio 和 futures）
 
-[未发布]: https://github.com/openappsys/exiftool-rs-wrapper/compare/v0.1.3...HEAD
+[未发布]: https://github.com/openappsys/exiftool-rs-wrapper/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.4
 [0.1.3]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.3
 [0.1.0]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.0

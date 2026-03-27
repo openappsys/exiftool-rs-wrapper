@@ -1,6 +1,6 @@
 [package]
 name = "exiftool-rs-wrapper"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 authors = ["Open Application Systems <oss@openappsys.com>"]
 description = "一个高性能、类型安全的 ExifTool Rust 封装库，支持异步 API"
@@ -84,8 +84,11 @@ minimal = []
 # 平衡方案（推荐）：标准 + 主流厂商
 balanced = ["standard", "vendors-common"]
 
+# Serde 结构体支持
+serde-structs = []
+
 # 完整功能（所有标签）
-full = ["balanced", "fuji", "olympus", "panasonic", "other"]
+full = ["balanced", "fuji", "olympus", "panasonic", "other", "serde-structs"]
 
 [dev-dependencies]
 tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }
@@ -135,3 +138,8 @@ path = "examples/error_handling.rs"
 [[example]]
 name = "performance_optimization"
 path = "examples/performance_optimization.rs"
+
+[[example]]
+name = "serde_example"
+path = "examples/serde_example.rs"
+required-features = ["serde-structs"]

@@ -101,19 +101,19 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-exiftool-rs-wrapper = "0.1.3"
+exiftool-rs-wrapper = "0.1.4"
 
 # Enable async support (optional)
-exiftool-rs-wrapper = { version = "0.1.3", features = ["async"] }
+exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
 
 # Minimal build - only basic EXIF tags
-exiftool-rs-wrapper = { version = "0.1.3", default-features = false, features = ["exif"] }
+exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif"] }
 
 # Standard metadata (EXIF + IPTC + XMP + GPS)
-exiftool-rs-wrapper = { version = "0.1.3", default-features = false, features = ["standard"] }
+exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["standard"] }
 
 # Specific vendors only
-exiftool-rs-wrapper = { version = "0.1.3", default-features = false, features = ["exif", "canon", "nikon"] }
+exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif", "canon", "nikon"] }
 ```
 
 ### Available Features
