@@ -16,14 +16,26 @@
 
 use exiftool_rs_wrapper::structs::{Metadata, SimpleMetadata};
 use exiftool_rs_wrapper::ExifTool;
+use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 检查是否有示例图片
+    let test_image = find_test_image();
+    if test_image.is_none() {
+        println!("⚠️  未找到测试图片，示例将以演示模式运行");
+        println!("   请在 examples 目录下放置一张名为 'sample.jpg' 的图片");
+        return Ok(());
+    }
+
+    let image_path = test_image.unwrap();
+    println!("📷 使用图片: {}\n", image_path.display());
+
     // 创建 ExifTool 实例
     let exiftool = ExifTool::new()?;
 
     // 示例 1: 使用完整 Metadata 结构体
     println!("=== 示例 1: 完整 Metadata 结构体 ===");
-    match exiftool.read_struct::<Metadata, _>("data/image.jpg") {
+    match exiftool.read_struct::<Metadata, _>(image_path.clone()) {
         Ok(meta) => {
             println!("文件: {}", meta.file.file_name);
             println!("大小: {}", meta.file.file_size);
@@ -66,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 示例 2: 使用简化 SimpleMetadata
     println!("\n=== 示例 2: 简化结构体 ===");
-    match exiftool.read_struct::<SimpleMetadata, _>("data/image.jpg") {
+    match exiftool.read_struct::<SimpleMetadata, _>(image_path.clone()) {
         Ok(meta) => {
             println!("文件: {}", meta.file_name);
             println!("大小: {}", meta.file_size);
@@ -102,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .executable("exiftool") // 可指定自定义路径
         .build()?;
 
-    match exiftool2.read_struct::<SimpleMetadata, _>("data/image.jpg") {
+    match exiftool2.read_struct::<SimpleMetadata, _>(image_path) {
         Ok(meta) => {
             println!("使用 Builder 模式成功读取文件: {}", meta.file_name);
         }
@@ -110,4 +122,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+
+/// 查找测试图片
+fn find_test_image() -> Option<PathBuf> {
+    let possible_paths = vec![
+        PathBuf::from("examples/sample.jpg"),
+        PathBuf::from("examples/test.jpg"),
+        PathBuf::from("sample.jpg"),
+        PathBuf::from("test.jpg"),
+    ];
+
+    possible_paths.into_iter().find(|path| path.exists())
 }
