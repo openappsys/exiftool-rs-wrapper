@@ -1,3 +1,3 @@
 //! 文件格式标签
 
-// 暂时为空，后续添加
+// 待完善：JPEG、PNG、GIF、TIFF、PSD、BMP、WebP 等

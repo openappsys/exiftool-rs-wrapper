@@ -55,7 +55,7 @@ mod tags;
 pub mod structs;
 
 /// 高级功能模块
-pub mod advanced;
+mod advanced;
 
 /// 异步 API 模块
 #[cfg(feature = "async")]
@@ -130,12 +130,12 @@ pub struct ExifTool {
     inner: Arc<Mutex<ExifToolInner>>,
 }
 
-/// ExifTool 构建器包装器
-pub struct ExifToolBuilderWrapper {
+/// ExifTool 构建器
+pub struct ExifToolBuilder {
     executable: Option<std::path::PathBuf>,
 }
 
-impl ExifToolBuilderWrapper {
+impl ExifToolBuilder {
     /// 创建新的构建器
     pub fn new() -> Self {
         Self { executable: None }
@@ -161,7 +161,7 @@ impl ExifToolBuilderWrapper {
     }
 }
 
-impl Default for ExifToolBuilderWrapper {
+impl Default for ExifToolBuilder {
     fn default() -> Self {
         Self::new()
     }
@@ -211,8 +211,8 @@ impl ExifTool {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn builder() -> ExifToolBuilderWrapper {
-        ExifToolBuilderWrapper::new()
+    pub fn builder() -> ExifToolBuilder {
+        ExifToolBuilder::new()
     }
 
     /// 查询单个文件的元数据
