@@ -5,7 +5,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! exiftool-rs-wrapper = { version = "0.1.0", features = ["async"] }
+//! exiftool-rs-wrapper = { version = "0.1.3", features = ["async"] }
 //! tokio = { version = "1.0", features = ["full"] }
 //! ```
 //!

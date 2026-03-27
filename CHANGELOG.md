@@ -7,6 +7,20 @@
 
 ## [未发布]
 
+## [0.1.3] - 2026-03-27
+
+### 新增
+
+- 灵活的标签模块系统，支持通过 Cargo features 按需编译标签组
+- 新增 `standard`、`vendors-common`、`balanced`、`full` 等预设 feature 组合
+- 标签目录重构，按功能分组（standard/vendors/formats/video/audio）
+
+### 修复
+
+- 修复标签数量不匹配问题，现在严格匹配 ExifTool 的 18,046 个标签
+- 删除多余的标签组快捷方式（如 AllDates、Canon、Nikon 等）
+- 清理无效的 XMP 命名空间标签
+
 ## [0.1.0] - 2026-03-26
 
 ### 新增
@@ -35,5 +49,6 @@
 - `default`: 同步 API
 - `async`: 异步 API 支持（依赖 tokio 和 futures）
 
-[未发布]: https://github.com/openappsys/exiftool-rs-wrapper/compare/v0.1.0...HEAD
+[未发布]: https://github.com/openappsys/exiftool-rs-wrapper/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.3
 [0.1.0]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.0

@@ -189,54 +189,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 更新 CHANGELOG.md
-  update-changelog:
-    name: 更新 CHANGELOG
-    needs: [check-version, publish-crates]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 更新 CHANGELOG.md
-        run: |
-          VERSION=${{ needs.check-version.outputs.version }}
-          TAG=${GITHUB_REF#refs/tags/}
-          DATE=$(date +%Y-%m-%d)
-          
-          # 创建新的 CHANGELOG 条目
-          cat > NEW_CHANGELOG.md << EOF
-          # Changelog
-
-          所有显著变更都将记录在此文件中。
-
-          ## [$VERSION] - $DATE
-
-          ### 新增
-          - 版本 $VERSION 发布
-
-          EOF
-          
-          # 如果已有 CHANGELOG.md，追加历史记录
-          if [ -f CHANGELOG.md ]; then
-            tail -n +4 CHANGELOG.md >> NEW_CHANGELOG.md
-          fi
-          
-          mv NEW_CHANGELOG.md CHANGELOG.md
-
-      - name: 提交 CHANGELOG 更新
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "docs: 更新 CHANGELOG 为版本 ${{ needs.check-version.outputs.version }}"
-          git push
-
   # 发布通知
   notify:
     name: 发布通知

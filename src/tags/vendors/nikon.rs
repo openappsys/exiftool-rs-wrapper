@@ -276,7 +276,6 @@ pub const NIKON_N_E_F_BIT_DEPTH: TagId = TagId("NEFBitDepth");
 pub const NIKON_N_E_F_COMPRESSION: TagId = TagId("NEFCompression");
 pub const NIKON_N_E_F_LINEARIZATION_TABLE: TagId = TagId("NEFLinearizationTable");
 pub const NIKON_NEW_LENS_DATA: TagId = TagId("NewLensData");
-pub const NIKON_NIKON: TagId = TagId("Nikon");
 pub const NIKON_NIKON_CAPTURE_DATA: TagId = TagId("NikonCaptureData");
 pub const NIKON_NIKON_CAPTURE_EDIT_VERSIONS: TagId = TagId("NikonCaptureEditVersions");
 pub const NIKON_NIKON_CAPTURE_OFFSETS: TagId = TagId("NikonCaptureOffsets");

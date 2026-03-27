@@ -2,8 +2,8 @@
 //!
 //! 提供交互式的 ExifTool shell
 
-use crate::ExifTool;
 use crate::error::Result;
+use crate::ExifTool;
 use std::io::{self, Write};
 
 /// REPL 交互式 shell
@@ -44,7 +44,7 @@ impl ReplShell {
             self.print_help(&mut stdout)?;
         }
 
-        writeln!(stdout, "ExifTool REPL v0.1.0")?;
+        writeln!(stdout, "ExifTool REPL v{}", env!("CARGO_PKG_VERSION"))?;
         writeln!(stdout, "输入 'help' 查看帮助，输入 'quit' 退出。\n")?;
 
         loop {
