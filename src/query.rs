@@ -59,6 +59,10 @@ pub struct QueryBuilder<'et> {
     php_format: bool,
     plot_format: bool,
     args_format: bool,
+    // 其他选项
+    common_args: Vec<String>,
+    echo: Vec<(String, Option<String>)>,
+    efile: Option<String>,
 }
 
 impl<'et> QueryBuilder<'et> {
@@ -104,6 +108,10 @@ impl<'et> QueryBuilder<'et> {
             php_format: false,
             plot_format: false,
             args_format: false,
+            // 其他选项
+            common_args: Vec::new(),
+            echo: Vec::new(),
+            efile: None,
         }
     }
 
@@ -794,6 +802,34 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 设置公共参数
+    ///
+    /// 使用 `-common_args` 选项定义在多个命令之间共享的参数
+    pub fn common_args(mut self, args: &[impl AsRef<str>]) -> Self {
+        for arg in args {
+            self.common_args.push(arg.as_ref().to_string());
+        }
+        self
+    }
+
+    /// 输出文本到stdout或stderr
+    ///
+    /// 使用 `-echo` 选项在处理期间输出文本
+    /// - `text`: 要输出的文本
+    /// - `target`: 输出目标，None表示stdout，Some("stderr")表示stderr
+    pub fn echo(mut self, text: impl Into<String>, target: Option<impl Into<String>>) -> Self {
+        self.echo.push((text.into(), target.map(|t| t.into())));
+        self
+    }
+
+    /// 保存错误文件名到文件
+    ///
+    /// 使用 `-efile` 选项将处理失败的文件名保存到指定文件
+    pub fn efile(mut self, filename: impl Into<String>) -> Self {
+        self.efile = Some(filename.into());
+        self
+    }
+
     /// 执行查询
     pub fn execute(self) -> Result<Metadata> {
         let args = self.build_args();
@@ -987,6 +1023,25 @@ impl<'et> QueryBuilder<'et> {
         // 格式化为exiftool参数
         if self.args_format {
             args.push("-args".to_string());
+        }
+
+        // 公共参数
+        for arg in &self.common_args {
+            args.push(format!("-common_args {}", arg));
+        }
+
+        // echo输出
+        for (text, target) in &self.echo {
+            let echo_arg = match target {
+                Some(t) if t == "stderr" => format!("-echo2 {}", text),
+                _ => format!("-echo {}", text),
+            };
+            args.push(echo_arg);
+        }
+
+        // 错误文件
+        if let Some(ref filename) = self.efile {
+            args.push(format!("-efile {}", filename));
         }
 
         // 禁用复合标签
