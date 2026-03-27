@@ -1,8 +1,8 @@
 //! 写入操作构建器
 
+use crate::ExifTool;
 use crate::error::{Error, Result};
 use crate::types::TagId;
-use crate::ExifTool;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -37,6 +37,11 @@ pub struct WriteBuilder<'et> {
     backup: bool,
     output_path: Option<PathBuf>,
     condition: Option<String>,
+    ignore_minor_errors: bool,
+    preserve_time: bool,
+    quiet: bool,
+    zip_compression: bool,
+    fix_base: Option<u32>,
     raw_args: Vec<String>,
 }
 
@@ -51,6 +56,11 @@ impl<'et> WriteBuilder<'et> {
             backup: true,
             output_path: None,
             condition: None,
+            ignore_minor_errors: false,
+            preserve_time: false,
+            quiet: false,
+            zip_compression: false,
+            fix_base: None,
             raw_args: Vec::new(),
         }
     }
@@ -212,6 +222,145 @@ impl<'et> WriteBuilder<'et> {
         self
     }
 
+    /// 忽略次要错误
+    ///
+    /// 使用 `-m` 选项忽略次要错误和警告，继续处理其他文件。
+    /// 这在批量处理时很有用，可以避免单个文件错误导致整个操作失败。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 批量写入时忽略次要错误
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2026")
+    ///     .ignore_minor_errors(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn ignore_minor_errors(mut self, yes: bool) -> Self {
+        self.ignore_minor_errors = yes;
+        self
+    }
+
+    /// 保留文件修改时间
+    ///
+    /// 使用 `-P` 选项保留文件的原始修改时间。
+    /// 默认情况下，ExifTool 会更新文件的修改时间为当前时间。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 写入元数据但保留原始修改时间
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2026")
+    ///     .preserve_time(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn preserve_time(mut self, yes: bool) -> Self {
+        self.preserve_time = yes;
+        self
+    }
+
+    /// 静默模式
+    ///
+    /// 使用 `-q` 选项启用静默模式，减少输出信息。
+    /// 可以使用多次来增加静默程度。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 静默模式下写入
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2026")
+    ///     .quiet(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn quiet(mut self, yes: bool) -> Self {
+        self.quiet = yes;
+        self
+    }
+
+    /// 启用 ZIP 压缩
+    ///
+    /// 使用 `-z` 选项读写压缩的元数据信息。
+    /// 某些文件格式支持压缩元数据存储。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用压缩写入元数据
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2026")
+    ///     .zip_compression(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn zip_compression(mut self, yes: bool) -> Self {
+        self.zip_compression = yes;
+        self
+    }
+
+    /// 修复 MakerNotes 偏移
+    ///
+    /// 使用 `-F` 选项修复 MakerNotes 的基准偏移。
+    /// 这在处理某些损坏或格式异常的图像文件时很有用。
+    ///
+    /// # 参数
+    ///
+    /// - `offset` - 可选的偏移量修正值（以字节为单位）
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 自动修复 MakerNotes 偏移
+    /// exiftool.write("photo.jpg")
+    ///     .tag("Copyright", "© 2026")
+    ///     .fix_base(None)
+    ///     .execute()?;
+    ///
+    /// // 指定偏移量修复
+    /// exiftool.write("photo.jpg")
+    ///     .fix_base(Some(1024))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn fix_base(mut self, offset: Option<u32>) -> Self {
+        self.fix_base = offset;
+        self
+    }
+
     /// 日期/时间偏移
     ///
     /// 示例: `.offset("DateTimeOriginal", "+1:0:0 0:0:0")` 表示增加 1 天
@@ -275,6 +424,35 @@ impl<'et> WriteBuilder<'et> {
             args.push(format!("-if {}", condition));
         }
 
+        // 忽略次要错误
+        if self.ignore_minor_errors {
+            args.push("-m".to_string());
+        }
+
+        // 保留文件修改时间
+        if self.preserve_time {
+            args.push("-P".to_string());
+        }
+
+        // 静默模式
+        if self.quiet {
+            args.push("-q".to_string());
+        }
+
+        // ZIP 压缩
+        if self.zip_compression {
+            args.push("-z".to_string());
+        }
+
+        // 修复 MakerNotes 偏移
+        if let Some(offset) = self.fix_base {
+            if offset == 0 {
+                args.push("-F".to_string());
+            } else {
+                args.push(format!("-F{}", offset));
+            }
+        }
+
         // 原始参数
         args.extend(self.raw_args.clone());
 
@@ -331,11 +509,7 @@ impl WriteResult {
             "{}_original",
             self.path.extension()?.to_string_lossy()
         ));
-        if backup.exists() {
-            Some(backup)
-        } else {
-            None
-        }
+        if backup.exists() { Some(backup) } else { None }
     }
 }
 

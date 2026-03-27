@@ -63,7 +63,7 @@ pub use advanced::{
 pub use binary::{BinaryOperations, BinaryTag, BinaryWriteBuilder, BinaryWriteResult};
 pub use error::{Error, Result};
 pub use process::Response;
-pub use query::{BatchQueryBuilder, QueryBuilder};
+pub use query::{BatchQueryBuilder, EscapeFormat, QueryBuilder};
 pub use types::{Metadata, TagId, TagValue};
 pub use write::{WriteBuilder, WriteMode, WriteResult};
 
@@ -383,10 +383,7 @@ impl ExifTool {
         } else {
             "-delete_original"
         };
-        let args = vec![
-            arg.to_string(),
-            path.as_ref().to_string_lossy().to_string(),
-        ];
+        let args = vec![arg.to_string(), path.as_ref().to_string_lossy().to_string()];
         self.execute_raw(&args)?;
         Ok(())
     }

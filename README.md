@@ -8,7 +8,7 @@
 
 **中文** | [English](README-EN.md)
 
-> 一个高性能、类型安全的 Rust ExifTool 封装库，提供 100% ExifTool 功能覆盖
+> 一个高性能、类型安全的 Rust ExifTool 封装库，已实现 **100% 核心功能覆盖**（包含 617 个预定义标签）
 
 ## 简介
 

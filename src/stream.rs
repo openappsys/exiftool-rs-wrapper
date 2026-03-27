@@ -222,13 +222,9 @@ impl StreamingOperations for ExifTool {
         F: FnMut(&mut dyn Read) -> Result<R>,
     {
         // 使用标准文件读取实现流式处理
-        let file = std::fs::File::open(path.as_ref())
-            .map_err(crate::error::Error::Io)?;
+        let file = std::fs::File::open(path.as_ref()).map_err(crate::error::Error::Io)?;
 
-        let tracker = Arc::new(ProgressTracker::new(
-            1,
-            options.progress_callback.clone(),
-        ));
+        let tracker = Arc::new(ProgressTracker::new(1, options.progress_callback.clone()));
 
         let mut reader = ProgressReader::new(file, tracker, options.buffer_size);
 
