@@ -271,7 +271,7 @@ pub mod canon {
     pub const CANON_FRAME_RATE: TagId = TagId::new("FrameRate");
     pub const CANON_GRAINY_B_W_FILTER: TagId = TagId::new("GrainyBWFilter");
     pub const CANON_H_D_R: TagId = TagId::new("HDR");
-    pub const CANON_H_D_R-_P_Q: TagId = TagId::new("HDR-PQ");
+    pub const CANON_H_D_R__P_Q: TagId = TagId::new("HDR-PQ");
     pub const CANON_H_D_R_EFFECT: TagId = TagId::new("HDREffect");
     pub const CANON_HIGH_I_S_O_NOISE_REDUCTION: TagId = TagId::new("HighISONoiseReduction");
     pub const CANON_HIGHLIGHT_TONE_PRIORITY: TagId = TagId::new("HighlightTonePriority");

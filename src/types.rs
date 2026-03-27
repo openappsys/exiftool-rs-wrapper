@@ -6,7 +6,7 @@ use std::fmt;
 
 /// 标签标识符 - 提供类型安全的标签访问
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TagId(&'static str);
+pub struct TagId(pub &'static str);
 
 impl TagId {
     /// 创建新的标签标识符

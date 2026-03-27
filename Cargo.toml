@@ -33,32 +33,59 @@ tempfile = "3.27"
 lru = "0.16"
 
 [features]
-default = ["all-tags"]
+default = ["full"]
 async = ["tokio", "futures"]
 
-# 标签模块 feature flags - 按需编译
-# 基础模块
-exif = []     # EXIF 标准标签（图像宽度、高度、曝光等）
-iptc = []     # IPTC 标签（新闻、标题、关键词等）
-xmp = []      # XMP 标签（可扩展元数据）
-gps = []      # GPS 标签（地理位置信息）
+# ============================================================================
+# 标签模块 feature flags - 完全模块化，自由组合
+# ============================================================================
 
-# 厂商特定模块
-canon = []    # Canon MakerNotes
-nikon = []    # Nikon MakerNotes
-sony = []     # Sony MakerNotes
-fuji = []     # FujiFilm MakerNotes
-olympus = []  # Olympus MakerNotes
-panasonic = [] # Panasonic MakerNotes
+# 基础标准标签
+exif = []
+iptc = []
+xmp = []
+gps = []
 
-# 其他所有标签（15000+ 个）
+# 主流厂商
+canon = []
+nikon = []
+sony = []
+
+# 其他厂商
+fuji = []
+olympus = []
+panasonic = []
+
+# 其他所有标签
 other = []
 
-# 预设组合
-standard = ["exif", "iptc", "xmp", "gps"]  # 标准元数据
-vendors = ["canon", "nikon", "sony", "fuji", "olympus", "panasonic"]  # 所有厂商
-all-tags = ["standard", "vendors", "other"]  # 所有标签（你最后还是会全部编译上，哈哈！）
-minimal = ["exif"]  # 最小体积，仅基本 EXIF
+# ========== 预设组合 ==========
+# 标准元数据（不含厂商）
+standard = ["exif", "iptc", "xmp", "gps"]
+
+# 常用厂商
+vendors-common = ["canon", "nikon", "sony"]
+
+# 图像处理专用
+image = ["standard", "vendors-common"]
+
+# 视频处理专用
+video = []
+
+# 音频处理专用
+audio = []
+
+# 文件格式支持
+image-formats = []
+
+# 最小体积（仅基本 EXIF + common）
+minimal = []
+
+# 平衡方案（推荐）：标准 + 主流厂商
+balanced = ["standard", "vendors-common"]
+
+# 完整功能（所有标签）
+full = ["balanced", "fuji", "olympus", "panasonic", "other"]
 
 [dev-dependencies]
 tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }
