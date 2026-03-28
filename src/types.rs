@@ -54,7 +54,7 @@ impl TagId {
     pub const SubjectDistance: Self = Self("SubjectDistance");
     pub const MeteringMode: Self = Self("MeteringMode");
     pub const LightSource: Self = Self("LightSource");
-    pub const FLASH: Self = Self("Flash");
+    pub const Flash: Self = Self("Flash");
     pub const FocalLength: Self = Self("FocalLength");
     pub const FocalLengthIn35mmFormat: Self = Self("FocalLengthIn35mmFormat");
     pub const FlashEnergy: Self = Self("FlashEnergy");
@@ -75,9 +75,9 @@ impl TagId {
     pub const FocalLength35efl: Self = Self("FocalLength35efl");
     pub const SceneCaptureType: Self = Self("SceneCaptureType");
     pub const GainControl: Self = Self("GainControl");
-    pub const CONTRAST: Self = Self("Contrast");
-    pub const SATURATION: Self = Self("Saturation");
-    pub const SHARPNESS: Self = Self("Sharpness");
+    pub const Contrast: Self = Self("Contrast");
+    pub const Saturation: Self = Self("Saturation");
+    pub const Sharpness: Self = Self("Sharpness");
     pub const DeviceSettingDescription: Self = Self("DeviceSettingDescription");
     pub const SubjectDistanceRange: Self = Self("SubjectDistanceRange");
 
@@ -116,7 +116,7 @@ impl TagId {
 
     // === 文件信息标签 ===
     pub const FileName: Self = Self("FileName");
-    pub const DIRECTORY: Self = Self("Directory");
+    pub const Directory: Self = Self("Directory");
     pub const FileSize: Self = Self("FileSize");
     pub const FileModifyDate: Self = Self("FileModifyDate");
     pub const FileAccessDate: Self = Self("FileAccessDate");
@@ -214,8 +214,8 @@ impl TagId {
 
     // === 图像尺寸标签 ===
     pub const ImageSize: Self = Self("ImageSize");
-    pub const MEGAPIXELS: Self = Self("Megapixels");
-    pub const QUALITY: Self = Self("Quality");
+    pub const Megapixels: Self = Self("Megapixels");
+    pub const Quality: Self = Self("Quality");
     pub const BitsPerSample: Self = Self("BitsPerSample");
     pub const ColorComponents: Self = Self("ColorComponents");
     pub const YCbCrSubSampling: Self = Self("YCbCrSubSampling");
@@ -232,7 +232,7 @@ impl TagId {
 
     // === 色彩空间标签 ===
     pub const ColorSpace: Self = Self("ColorSpace");
-    pub const GAMMA: Self = Self("Gamma");
+    pub const Gamma: Self = Self("Gamma");
 
     // === 复合标签 (Composite) ===
     pub const HyperfocalDistance: Self = Self("HyperfocalDistance");
@@ -490,7 +490,7 @@ impl TagId {
     pub const XmpExifImageUniqueId: Self = Self("exif:ImageUniqueID");
 
     // === 视频特定标签 ===
-    pub const DURATION: Self = Self("Duration");
+    pub const Duration: Self = Self("Duration");
     pub const VideoFrameRate: Self = Self("VideoFrameRate");
     pub const VideoFrameCount: Self = Self("VideoFrameCount");
     pub const VideoBitRate: Self = Self("VideoBitRate");
@@ -505,14 +505,14 @@ impl TagId {
     pub const MediaModifyDate: Self = Self("MediaModifyDate");
     pub const MediaDataSize: Self = Self("MediaDataSize");
     pub const MediaDataOffset: Self = Self("MediaDataOffset");
-    pub const GENRE: Self = Self("Genre");
+    pub const Genre: Self = Self("Genre");
     // ARTIST 已在上面定义
-    pub const ALBUM: Self = Self("Album");
-    pub const YEAR: Self = Self("Year");
-    pub const COMMENT: Self = Self("Comment");
-    pub const LYRICS: Self = Self("Lyrics");
-    pub const COMPOSER: Self = Self("Composer");
-    pub const PUBLISHER: Self = Self("Publisher");
+    pub const Album: Self = Self("Album");
+    pub const Year: Self = Self("Year");
+    pub const Comment: Self = Self("Comment");
+    pub const Lyrics: Self = Self("Lyrics");
+    pub const Composer: Self = Self("Composer");
+    pub const Publisher: Self = Self("Publisher");
 
     // === 更多文件信息 ===
     pub const FileDescription: Self = Self("FileDescription");
