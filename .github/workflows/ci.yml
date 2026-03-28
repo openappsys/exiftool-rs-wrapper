@@ -206,14 +206,32 @@ jobs:
       - name: 安装 ExifTool 最新版 (Ubuntu)
         if: matrix.os == 'ubuntu-latest' && matrix.exiftool_source == 'latest'
         run: |
-          # 从 SourceForge 下载最新版（exiftool.org 已重定向到 SourceForge）
-          # 使用 -L 参数跟随重定向
-          curl -fsSL -L -o /tmp/exiftool.tar.gz "https://sourceforge.net/projects/exiftool/files/latest/download" || \
-          curl -fsSL -L -o /tmp/exiftool.tar.gz "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-13.53.tar.gz/download"
-          tar -xzf /tmp/exiftool.tar.gz -C /tmp
+          # 使用 apt 安装较新版本，或从 GitHub 下载
+          # SourceForge 下载不稳定，改用 GitHub 镜像或官方站点
+          sudo apt-get update
+          sudo apt-get install -y wget
+          
+          # 尝试从官方站点下载最新版本
+          EXIFTOOL_VERSION=$(curl -s https://raw.githubusercontent.com/exiftool/exiftool/master/META.json | grep -o '"version" : "[^"]*"' | head -1 | cut -d'"' -f4 || echo "13.53")
+          echo "Installing ExifTool version: $EXIFTOOL_VERSION"
+          
+          # 下载并解压
+          cd /tmp
+          wget -q "https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz" || \
+          wget -q "https://github.com/exiftool/exiftool/archive/refs/tags/${EXIFTOOL_VERSION}.tar.gz" -O "Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz" || \
+          wget -q "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz/download" -O "Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz"
+          
+          tar -xzf "Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz"
           EXIFTOOL_DIR=$(find /tmp -maxdepth 1 -type d -name 'Image-ExifTool-*' | head -n 1)
-          chmod +x "$EXIFTOOL_DIR/exiftool"
-          echo "EXIFTOOL_PATH=$EXIFTOOL_DIR/exiftool" >> $GITHUB_ENV
+          
+          if [ -z "$EXIFTOOL_DIR" ]; then
+            echo "Failed to download ExifTool, falling back to apt"
+            sudo apt-get install -y libimage-exiftool-perl
+          else
+            chmod +x "$EXIFTOOL_DIR/exiftool"
+            echo "EXIFTOOL_PATH=$EXIFTOOL_DIR/exiftool" >> $GITHUB_ENV
+            echo "ExifTool installed at: $EXIFTOOL_DIR/exiftool"
+          fi
 
       - name: 安装 ExifTool (macOS)
         if: matrix.os == 'macos-latest' && matrix.exiftool_source == 'system'
@@ -227,10 +245,13 @@ jobs:
         with:
           key: ${{ runner.os }}-compat-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: 编译测试
+        run: cargo build --tests --all-features
+
       - name: 运行兼容性报告测试
         run: |
-          cargo test --test compatibility_report -- --nocapture
-          cargo test --test option_coverage -- --nocapture
+          cargo test --test compatibility_report --all-features -- --nocapture
+          cargo test --test option_coverage --all-features -- --nocapture
 
       - name: 记录 ExifTool 版本
         run: |
