@@ -44,7 +44,7 @@ mod process;
 mod query;
 mod retry;
 mod stream;
-mod tags;
+pub mod tags;
 mod types;
 mod write;
 

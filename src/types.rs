@@ -1,5 +1,8 @@
 //! 核心类型定义
 
+// 允许非标准命名（与 ExifTool 保持一致）
+#![allow(non_upper_case_globals)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
