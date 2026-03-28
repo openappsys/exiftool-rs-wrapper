@@ -225,7 +225,9 @@ jobs:
           key: ${{ runner.os }}-compat-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: 运行兼容性报告测试
-        run: cargo test --test compatibility_report -- --nocapture
+        run: |
+          cargo test --test compatibility_report -- --nocapture
+          cargo test --test option_coverage -- --nocapture
 
       - name: 记录 ExifTool 版本
         run: |
@@ -243,7 +245,99 @@ jobs:
             target/compatibility/capability-report.json
             target/compatibility/capability-report.md
             target/compatibility/compatibility-gap-list.md
+            target/compatibility/option-coverage-report.json
+            target/compatibility/option-coverage-report.md
             target/compatibility/exiftool-version.txt
+
+      - name: 同步兼容性差距 Issue
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'target/compatibility/capability-report.json';
+            if (!fs.existsSync(path)) {
+              core.info('兼容性报告不存在，跳过 issue 同步');
+              return;
+            }
+
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const title = 'compatibility-gap: unresolved gaps';
+            const labels = ['compatibility-gap', 'quality-gate'];
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: labels.join(','),
+              per_page: 100,
+            });
+
+            const target = existing.find(i => i.title === title);
+            const unresolved = report.unresolved_gaps || [];
+
+            if (unresolved.length > 0) {
+              const body = [
+                '自动检测到兼容性未闭环项：',
+                '',
+                ...unresolved.map(g => `- ${g}`),
+                '',
+                `报告版本: ${report.exiftool_version}`,
+              ].join('\n');
+
+              if (target) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: target.number,
+                  body,
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                  body,
+                  labels,
+                });
+              }
+            } else if (target) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: target.number,
+                state: 'closed',
+              });
+            }
+
+  performance-gate:
+    name: 性能门禁
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-perf-gate-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 运行性能门禁测试
+        run: cargo test --test performance_gate -- --nocapture
+
+      - name: 上传性能门禁报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-gate-report
+          path: target/performance/perf-gate.json
 
   # 依赖检查
   audit:
@@ -261,7 +355,7 @@ jobs:
   # 失败通知
   notify:
     name: 失败通知
-    needs: [fmt, clippy, test, coverage, doc, compatibility-report, audit]
+    needs: [fmt, clippy, test, coverage, doc, compatibility-report, performance-gate, audit]
     runs-on: ubuntu-latest
     if: failure()
     steps:

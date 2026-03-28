@@ -132,6 +132,17 @@ pub struct ExifTool {
     global_args: Arc<Vec<String>>,
 }
 
+/// ExifTool 能力快照
+#[derive(Debug, Clone)]
+pub struct CapabilitySnapshot {
+    pub version: String,
+    pub tags_count: usize,
+    pub writable_tags_count: usize,
+    pub file_extensions_count: usize,
+    pub groups_count: usize,
+    pub descriptions_count: usize,
+}
+
 /// ExifTool 构建器
 pub struct ExifToolBuilder {
     executable: Option<std::path::PathBuf>,
@@ -482,6 +493,30 @@ impl ExifTool {
         Ok(parse_word_list(response.text()))
     }
 
+    /// 获取支持的分组列表（对应 `-listg`）
+    pub fn list_groups(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listg"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
+    /// 获取标签描述列表（对应 `-listd`）
+    pub fn list_descriptions(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listd"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
+    /// 生成当前 ExifTool 的能力快照
+    pub fn capability_snapshot(&self) -> Result<CapabilitySnapshot> {
+        Ok(CapabilitySnapshot {
+            version: self.version()?,
+            tags_count: self.list_tags()?.len(),
+            writable_tags_count: self.list_writable_tags()?.len(),
+            file_extensions_count: self.list_file_extensions()?.len(),
+            groups_count: self.list_groups()?.len(),
+            descriptions_count: self.list_descriptions()?.len(),
+        })
+    }
+
     /// 执行原始命令
     ///
     /// 这是高级 API，允许直接发送参数到 ExifTool。
@@ -691,5 +726,50 @@ mod tests {
             .list_file_extensions()
             .expect("list file extensions should succeed");
         assert!(!exts.is_empty());
+    }
+
+    #[test]
+    fn test_list_groups() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let groups = et.list_groups().expect("list groups should succeed");
+        assert!(!groups.is_empty());
+    }
+
+    #[test]
+    fn test_list_descriptions() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let desc = et
+            .list_descriptions()
+            .expect("list descriptions should succeed");
+        assert!(!desc.is_empty());
+    }
+
+    #[test]
+    fn test_capability_snapshot() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let snapshot = et
+            .capability_snapshot()
+            .expect("capability snapshot should succeed");
+        assert!(!snapshot.version.is_empty());
+        assert!(snapshot.tags_count > 0);
+        assert!(snapshot.writable_tags_count > 0);
+        assert!(snapshot.file_extensions_count > 0);
+        assert!(snapshot.groups_count > 0);
+        assert!(snapshot.descriptions_count > 0);
     }
 }

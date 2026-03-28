@@ -2,6 +2,7 @@
 //!
 //! 提供基于 tokio 的异步 ExifTool API
 
+use crate::CapabilitySnapshot;
 use crate::ExifTool;
 use crate::error::Result;
 use crate::types::Metadata;
@@ -208,6 +209,24 @@ impl AsyncExifTool {
         let exiftool = Arc::clone(&self.inner);
         run_blocking(move || exiftool.list_file_extensions()).await
     }
+
+    /// 异步获取分组列表（`-listg`）
+    pub async fn list_groups(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_groups()).await
+    }
+
+    /// 异步获取标签描述列表（`-listd`）
+    pub async fn list_descriptions(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_descriptions()).await
+    }
+
+    /// 异步生成能力快照
+    pub async fn capability_snapshot(&self) -> Result<CapabilitySnapshot> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.capability_snapshot()).await
+    }
 }
 
 /// 异步批量处理辅助函数
@@ -291,5 +310,20 @@ mod tests {
             .await
             .expect("list writable tags should succeed");
         assert!(!tags.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_async_capability_snapshot() {
+        let et = match AsyncExifTool::new() {
+            Ok(et) => et,
+            Err(crate::Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let snapshot = et
+            .capability_snapshot()
+            .await
+            .expect("capability snapshot should succeed");
+        assert!(snapshot.tags_count > 0);
     }
 }

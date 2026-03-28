@@ -38,10 +38,70 @@ jobs:
           fi
           echo "版本号验证通过: $TAG"
 
+  # 发布硬门禁（兼容性 + 性能）
+  quality-gates:
+    name: 发布质量门禁
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 ExifTool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libimage-exiftool-perl
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: 运行兼容性报告测试
+        run: |
+          cargo test --test compatibility_report -- --nocapture
+          cargo test --test option_coverage -- --nocapture
+
+      - name: 校验兼容性硬门禁
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path('target/compatibility/capability-report.json')
+          if not p.exists():
+              raise SystemExit('兼容性报告不存在')
+
+          data = json.loads(p.read_text())
+          if data.get('probe_coverage_percent', 0) < 100:
+              raise SystemExit(f"probe 覆盖率未达 100%: {data.get('probe_coverage_percent')}")
+          if data.get('unresolved_gaps'):
+              raise SystemExit(f"存在未闭环差距: {data.get('unresolved_gaps')}")
+
+          op = Path('target/compatibility/option-coverage-report.json')
+          if not op.exists():
+              raise SystemExit('选项覆盖报告不存在')
+          opt = json.loads(op.read_text())
+          if opt.get('unsupported_count', 1) != 0:
+              raise SystemExit(f"存在未覆盖选项: {opt.get('unsupported_count')}")
+          if opt.get('fail_count', 1) != 0:
+              raise SystemExit(f"存在失败选项: {opt.get('fail_count')}")
+          if opt.get('known_gap_count', 1) != 0:
+              raise SystemExit(f"存在 known-gap 未清零: {opt.get('known_gap_count')}")
+          print('兼容性硬门禁通过')
+          PY
+
+      - name: 运行行为一致性回归
+        run: cargo test --test behavior_consistency -- --nocapture
+
+      - name: 运行性能门禁
+        run: cargo test --test performance_gate -- --nocapture
+
   # 创建 GitHub Release
   create-release:
     name: 创建 GitHub Release
-    needs: check-version
+    needs: [check-version, quality-gates]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -93,7 +153,7 @@ jobs:
   # 发布到 crates.io
   publish-crates:
     name: 发布到 crates.io
-    needs: [check-version, create-release]
+    needs: [check-version, quality-gates, create-release]
     runs-on: ubuntu-latest
     environment: crates-io
     steps:
@@ -124,7 +184,7 @@ jobs:
   # 构建并上传二进制文件
   build-binaries:
     name: 构建二进制文件
-    needs: [check-version, create-release]
+    needs: [check-version, quality-gates, create-release]
     permissions:
       contents: write
     strategy:
