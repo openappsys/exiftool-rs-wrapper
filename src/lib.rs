@@ -65,7 +65,7 @@ pub use advanced::{
 };
 pub use binary::{BinaryOperations, BinaryTag, BinaryWriteBuilder, BinaryWriteResult};
 pub use error::{Error, Result};
-pub use process::Response;
+pub use process::{CommandId, CommandRequest, Response};
 pub use query::{BatchQueryBuilder, EscapeFormat, QueryBuilder};
 pub use types::{Metadata, TagId, TagValue};
 pub use write::{WriteBuilder, WriteMode, WriteResult};
@@ -93,6 +93,10 @@ pub use stream::{
     Cache, PerformanceStats, ProgressCallback, ProgressReader, ProgressTracker, StreamOptions,
     StreamingOperations,
 };
+
+#[cfg(feature = "async")]
+/// 异步流式处理模块（需要 async feature）
+pub use stream::async_stream;
 
 // 错误恢复和重试
 pub use retry::{BatchResult, Recoverable, RetryPolicy, with_retry_sync};
@@ -637,6 +641,61 @@ impl ExifTool {
 
         let mut inner = self.inner.lock()?;
         inner.execute(&merged_args)
+    }
+
+    /// 批量执行多个命令（原子多命令）
+    ///
+    /// 使用 `-executeNUM` 格式在一个事务中发送多个命令，
+    /// 通过编号区分各个命令的响应。
+    ///
+    /// # 优势
+    ///
+    /// - 减少进程间通信开销（一次性发送所有命令）
+    /// - 原子性：所有命令在一个批次中执行
+    /// - 支持复杂的读写链操作
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 批量执行多个命令
+    /// let commands = vec![
+    ///     vec!["-ver".to_string()],
+    ///     vec!["-list".to_string()],
+    /// ];
+    /// let responses = exiftool.execute_multiple(&commands)?;
+    ///
+    /// for (idx, response) in responses.iter().enumerate() {
+    ///     println!("命令 {}: {}", idx, response.text().trim());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn execute_multiple<S: AsRef<str>>(&self, commands: &[Vec<S>]) -> Result<Vec<Response>> {
+        debug!("Executing {} commands atomically", commands.len());
+
+        // 转换参数格式
+        let converted_commands: Vec<Vec<String>> = commands
+            .iter()
+            .map(|cmd| cmd.iter().map(|a| a.as_ref().to_string()).collect())
+            .collect();
+
+        // 合并全局参数到每个命令
+        let commands_with_global: Vec<Vec<String>> = converted_commands
+            .iter()
+            .map(|cmd| {
+                let mut merged = self.global_args.as_ref().clone();
+                merged.extend(cmd.iter().cloned());
+                merged
+            })
+            .collect();
+
+        let mut inner = self.inner.lock()?;
+        inner.execute_multiple(&commands_with_global)
     }
 
     /// 关闭 ExifTool 进程

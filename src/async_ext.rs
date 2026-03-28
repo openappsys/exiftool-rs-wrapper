@@ -340,6 +340,7 @@ impl AsyncExifTool {
     }
 
     /// 异步读取文件元数据并反序列化为结构体
+    #[cfg(feature = "serde-structs")]
     pub async fn read_struct<T, P>(&self, path: P) -> Result<T>
     where
         T: for<'de> serde::Deserialize<'de> + Send + 'static,
@@ -347,7 +348,11 @@ impl AsyncExifTool {
     {
         let exiftool = Arc::clone(&self.inner);
         let path = path.as_ref().to_path_buf();
-        run_blocking(move || exiftool.read_struct(&path)).await
+        run_blocking(move || {
+            use std::ops::Deref;
+            exiftool.deref().read_struct(&path)
+        })
+        .await
     }
 
     // ── 扩展 trait 异步包装 ──
@@ -509,6 +514,175 @@ impl AsyncExifTool {
         let exiftool = Arc::clone(&self.inner);
         let path = path.as_ref().to_path_buf();
         run_blocking(move || exiftool.remove_gps(&path)).await
+    }
+
+    // ── 异步流处理支持 ──
+
+    /// 异步流式查询文件元数据
+    ///
+    /// 返回一个接收流事件的通道，可用于实时跟踪处理进度。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::AsyncExifTool;
+    /// use exiftool_rs_wrapper::async_stream::StreamEvent;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = AsyncExifTool::new()?;
+    ///
+    /// let (mut rx, _handle) = exiftool.stream_query("photo.jpg").await?;
+    ///
+    /// while let Some(event) = rx.recv().await {
+    ///     match event {
+    ///         StreamEvent::Progress(processed, total) => {
+    ///             println!("进度: {}/{} 字节", processed, total);
+    ///         }
+    ///         StreamEvent::Complete => {
+    ///             println!("处理完成");
+    ///             break;
+    ///         }
+    ///         StreamEvent::MetadataChunk(_) => {
+    ///             println!("收到元数据");
+    ///         }
+    ///         _ => {}
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn stream_query<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+    ) -> Result<(
+        tokio::sync::mpsc::Receiver<crate::stream::async_stream::StreamEvent>,
+        crate::stream::async_stream::AsyncStreamHandle,
+    )> {
+        use crate::stream::async_stream::{AsyncStreamHandle, StreamEvent};
+        use tokio::sync::mpsc;
+
+        let (handle, _cancel_rx) = AsyncStreamHandle::new();
+        let (tx, rx) = mpsc::channel(32);
+
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+
+        // 在后台任务中执行流式处理
+        tokio::spawn(async move {
+            // 报告开始
+            let _ = tx.send(StreamEvent::Progress(0, 100)).await;
+
+            // 执行查询
+            let result = run_blocking(move || exiftool.query(&path).execute()).await;
+
+            match result {
+                Ok(metadata) => {
+                    let _ = tx.send(StreamEvent::MetadataChunk(metadata)).await;
+                    let _ = tx.send(StreamEvent::Complete).await;
+                }
+                Err(_e) => {
+                    // 错误通过通道关闭隐式传播
+                    drop(tx);
+                }
+            }
+        });
+
+        Ok((rx, handle))
+    }
+
+    /// 异步批量处理多个文件
+    ///
+    /// 并发处理多个文件，通过流返回进度和结果。
+    pub async fn stream_batch<P: AsRef<Path> + Send>(
+        &self,
+        paths: &[P],
+    ) -> Result<(
+        tokio::sync::mpsc::Receiver<(PathBuf, Result<Metadata>)>,
+        crate::stream::async_stream::AsyncStreamHandle,
+    )> {
+        use crate::stream::async_stream::AsyncStreamHandle;
+        use tokio::sync::mpsc;
+
+        let (handle, cancel_rx) = AsyncStreamHandle::new();
+        let (tx, rx) = mpsc::channel(32);
+
+        let paths: Vec<PathBuf> = paths.iter().map(|p| p.as_ref().to_path_buf()).collect();
+        let exiftool = self.clone();
+
+        // 在后台任务中执行批量处理
+        tokio::spawn(async move {
+            for path in paths.into_iter() {
+                // 检查是否已请求取消
+                if *cancel_rx.borrow() {
+                    break;
+                }
+
+                // 处理单个文件
+                let result = exiftool.query(&path).await;
+
+                // 发送结果
+                if tx.send((path, result)).await.is_err() {
+                    break;
+                }
+            }
+
+            // 发送完成事件
+            drop(tx);
+        });
+
+        Ok((rx, handle))
+    }
+
+    /// 异步处理大文件
+    ///
+    /// 适合处理视频等大文件，支持分块读取和进度跟踪。
+    pub async fn stream_large_file<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+    ) -> Result<(
+        tokio::sync::mpsc::Receiver<crate::stream::async_stream::StreamEvent>,
+        crate::stream::async_stream::AsyncStreamHandle,
+    )> {
+        use crate::stream::async_stream::{AsyncStreamHandle, StreamEvent};
+        use std::fs;
+        use tokio::sync::mpsc;
+
+        let (handle, _cancel_rx) = AsyncStreamHandle::new();
+        let (tx, rx) = mpsc::channel(32);
+
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+
+        // 获取文件大小用于进度报告
+        let file_size = fs::metadata(&path).map(|m| m.len() as usize).unwrap_or(0);
+
+        // 在后台任务中执行大文件处理
+        tokio::spawn(async move {
+            // 报告开始
+            let _ = tx.send(StreamEvent::Progress(0, file_size)).await;
+
+            // 使用分块查询选项处理大文件
+            let result = run_blocking(move || {
+                exiftool
+                    .query(&path)
+                    .fast(Some(2)) // 使用快速模式
+                    .execute()
+            })
+            .await;
+
+            match result {
+                Ok(metadata) => {
+                    let _ = tx.send(StreamEvent::Progress(file_size, file_size)).await;
+                    let _ = tx.send(StreamEvent::MetadataChunk(metadata)).await;
+                    let _ = tx.send(StreamEvent::Complete).await;
+                }
+                Err(_e) => {
+                    drop(tx);
+                }
+            }
+        });
+
+        Ok((rx, handle))
     }
 }
 

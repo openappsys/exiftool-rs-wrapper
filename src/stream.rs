@@ -365,6 +365,191 @@ impl PerformanceStats {
     }
 }
 
+// ============================================================================
+// 异步流支持（需要 async feature）
+// ============================================================================
+
+#[cfg(feature = "async")]
+pub mod async_stream {
+    //! 异步流式处理支持模块
+    //!
+    //! 提供基于流的异步元数据处理，支持进度跟踪和取消操作。
+
+    use crate::error::{Error, Result};
+    use crate::types::Metadata;
+    use std::path::{Path, PathBuf};
+    use tokio::sync::mpsc;
+    use tokio::sync::watch;
+
+    /// 流事件类型
+    #[derive(Debug, Clone)]
+    pub enum StreamEvent {
+        /// 进度更新（已处理字节数，总字节数）
+        Progress(usize, usize),
+        /// 元数据块（用于流式解析）
+        MetadataChunk(Metadata),
+        /// 处理完成
+        Complete,
+        /// 处理取消
+        Cancelled,
+    }
+
+    /// 异步流选项
+    #[derive(Debug, Clone)]
+    pub struct AsyncStreamOptions {
+        /// 缓冲区大小（字节）
+        pub buffer_size: usize,
+        /// 是否启用进度报告
+        pub enable_progress: bool,
+        /// 进度报告间隔（毫秒）
+        pub progress_interval_ms: u64,
+    }
+
+    impl Default for AsyncStreamOptions {
+        fn default() -> Self {
+            Self {
+                buffer_size: 64 * 1024, // 64KB
+                enable_progress: true,
+                progress_interval_ms: 100,
+            }
+        }
+    }
+
+    impl AsyncStreamOptions {
+        /// 创建新的异步流选项
+        pub fn new() -> Self {
+            Self::default()
+        }
+
+        /// 设置缓冲区大小
+        pub fn buffer_size(mut self, size: usize) -> Self {
+            self.buffer_size = size;
+            self
+        }
+
+        /// 设置是否启用进度报告
+        pub fn enable_progress(mut self, enable: bool) -> Self {
+            self.enable_progress = enable;
+            self
+        }
+
+        /// 设置进度报告间隔
+        pub fn progress_interval_ms(mut self, interval: u64) -> Self {
+            self.progress_interval_ms = interval;
+            self
+        }
+    }
+
+    /// 异步流处理句柄
+    ///
+    /// 用于控制异步流处理的执行，支持取消操作。
+    #[derive(Debug, Clone)]
+    pub struct AsyncStreamHandle {
+        cancel_tx: watch::Sender<bool>,
+    }
+
+    impl AsyncStreamHandle {
+        /// 创建新的流处理句柄
+        pub fn new() -> (Self, watch::Receiver<bool>) {
+            let (cancel_tx, cancel_rx) = watch::channel(false);
+            (Self { cancel_tx }, cancel_rx)
+        }
+
+        /// 取消流处理
+        pub fn cancel(&self) -> Result<()> {
+            self.cancel_tx
+                .send(true)
+                .map_err(|e| Error::process(format!("Failed to send cancel signal: {}", e)))
+        }
+
+        /// 检查是否已请求取消
+        pub fn is_cancelled(&self) -> bool {
+            *self.cancel_tx.borrow()
+        }
+    }
+
+    impl Default for AsyncStreamHandle {
+        fn default() -> Self {
+            let (handle, _) = Self::new();
+            handle
+        }
+    }
+
+    /// 异步批量处理结果
+    #[derive(Debug, Clone)]
+    pub struct AsyncBatchResult {
+        /// 成功处理的文件数
+        pub success_count: usize,
+        /// 失败的文件数
+        pub failure_count: usize,
+        /// 总文件数
+        pub total_count: usize,
+    }
+
+    /// 异步流处理 trait
+    ///
+    /// 为 ExifTool 提供异步流式处理能力。
+    #[async_trait::async_trait]
+    pub trait AsyncStreamingOperations {
+        /// 异步流式查询文件元数据
+        ///
+        /// 返回一个接收流事件的通道，可用于实时跟踪处理进度。
+        ///
+        /// # 示例
+        ///
+        /// ```rust,ignore
+        /// use exiftool_rs_wrapper::AsyncExifTool;
+        /// use exiftool_rs_wrapper::stream::async_stream::AsyncStreamingOperations;
+        ///
+        /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
+        ///     let exiftool = AsyncExifTool::new()?;
+        ///
+        ///     let (mut rx, _handle) = exiftool.stream_query("photo.jpg").await?;
+        ///
+        ///     while let Some(event) = rx.recv().await {
+        ///         match event {
+        ///             StreamEvent::Progress(processed, total) => {
+        ///                 println!("Progress: {}/{} bytes", processed, total);
+        ///             }
+        ///             StreamEvent::Complete => {
+        ///                 println!("Processing complete");
+        ///                 break;
+        ///             }
+        ///             _ => {}
+        ///         }
+        ///     }
+        ///
+        ///     Ok(())
+        /// }
+        /// ```
+        async fn stream_query<P: AsRef<Path> + Send>(
+            &self,
+            path: P,
+        ) -> Result<(mpsc::Receiver<StreamEvent>, AsyncStreamHandle)>;
+
+        /// 异步批量处理多个文件
+        ///
+        /// 并发处理多个文件，通过流返回进度和结果。
+        async fn stream_batch<P: AsRef<Path> + Send>(
+            &self,
+            paths: &[P],
+            options: &AsyncStreamOptions,
+        ) -> Result<(
+            mpsc::Receiver<(PathBuf, Result<Metadata>)>,
+            AsyncStreamHandle,
+        )>;
+
+        /// 异步处理大文件
+        ///
+        /// 适合处理视频等大文件，支持分块读取和进度跟踪。
+        async fn stream_large_file<P: AsRef<Path> + Send>(
+            &self,
+            path: P,
+            options: &AsyncStreamOptions,
+        ) -> Result<(mpsc::Receiver<StreamEvent>, AsyncStreamHandle)>;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

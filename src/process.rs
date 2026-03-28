@@ -4,11 +4,51 @@ use crate::error::{Error, Result};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
 const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// 命令编号类型
+///
+/// 用于在多命令执行场景中区分不同命令的响应
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CommandId(pub u32);
+
+impl CommandId {
+    /// 创建新的命令编号
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// 获取编号值
+    pub fn value(&self) -> u32 {
+        self.0
+    }
+}
+
+/// 命令执行请求
+#[derive(Debug, Clone)]
+pub struct CommandRequest {
+    /// 命令编号（用于多命令场景）
+    pub id: Option<CommandId>,
+    /// 命令参数
+    pub args: Vec<String>,
+}
+
+impl CommandRequest {
+    /// 创建新的命令请求（无编号）
+    pub fn new(args: Vec<String>) -> Self {
+        Self { id: None, args }
+    }
+
+    /// 创建带编号的命令请求
+    pub fn with_id(id: CommandId, args: Vec<String>) -> Self {
+        Self { id: Some(id), args }
+    }
+}
 
 /// ExifTool 进程内部状态
 pub struct ExifToolInner {
@@ -110,8 +150,17 @@ impl ExifToolInner {
         Ok(())
     }
 
-    /// 执行命令并获取响应
+    /// 执行命令并获取响应（无编号）
     pub fn execute(&mut self, args: &[String]) -> Result<Response> {
+        self.execute_with_id(None, args)
+    }
+
+    /// 执行命令并获取响应（支持编号）
+    pub fn execute_with_id(
+        &mut self,
+        command_num: Option<usize>,
+        args: &[String],
+    ) -> Result<Response> {
         debug!("Executing command with {} args", args.len());
 
         // 发送所有参数
@@ -119,16 +168,25 @@ impl ExifToolInner {
             self.send_line(arg)?;
         }
 
-        // 发送执行命令
-        self.send_line("-execute")?;
+        // 发送执行命令（带编号或不带）
+        if let Some(num) = command_num {
+            self.send_line(&format!("-execute{}", num))?;
+        } else {
+            self.send_line("-execute")?;
+        }
         self.stdin.flush()?;
 
         // 读取响应
-        self.read_response()
+        self.read_response_for_num(command_num)
     }
 
-    /// 读取响应（直到遇到 {ready}）
+    /// 读取响应（直到遇到 {ready} 或 {readyNUM}）
     pub fn read_response(&mut self) -> Result<Response> {
+        self.read_response_for_id(None)
+    }
+
+    /// 读取特定命令编号的响应
+    fn read_response_for_id(&mut self, expected_id: Option<CommandId>) -> Result<Response> {
         let mut lines = Vec::new();
 
         loop {
@@ -145,16 +203,50 @@ impl ExifToolInner {
 
             if trimmed.starts_with("{ready") && trimmed.ends_with('}') {
                 if trimmed == "{ready}" {
+                    // 无编号响应
+                    if let Some(expected) = expected_id {
+                        return Err(Error::process(format!(
+                            "Expected {{ready{}}}, but received {{ready}}",
+                            expected.value()
+                        )));
+                    }
                     break;
                 }
 
-                let code_text = &trimmed[6..trimmed.len() - 1];
-                if !code_text.is_empty() {
-                    let message = format!("ExifTool 返回错误结束标记: {}", trimmed);
-                    return Err(Error::process(message));
-                }
+                // 解析 {readyNUM} 格式
+                let content = &trimmed[6..trimmed.len() - 1];
 
-                break;
+                // 检查是否为错误码
+                if let Ok(code) = content.parse::<i32>() {
+                    if code != 0 {
+                        let message = format!("ExifTool 返回错误码: {}", code);
+                        return Err(Error::process(message));
+                    }
+                    // 编号为 0 表示成功但不匹配（正常情况下不应该发生）
+                } else {
+                    // 解析命令编号
+                    match content.parse::<u32>() {
+                        Ok(id) => {
+                            let received_id = CommandId::new(id);
+                            if let Some(expected) = expected_id
+                                && received_id != expected
+                            {
+                                return Err(Error::process(format!(
+                                    "命令编号不匹配: 期望 {}, 收到 {}",
+                                    expected.value(),
+                                    received_id.value()
+                                )));
+                            }
+                            break;
+                        }
+                        Err(_) => {
+                            return Err(Error::process(format!(
+                                "无法解析 {{ready}} 标记中的编号: {}",
+                                trimmed
+                            )));
+                        }
+                    }
+                }
             }
 
             lines.push(buffer.clone());
@@ -163,7 +255,7 @@ impl ExifToolInner {
         Ok(Response::new(lines))
     }
 
-    /// 批量执行命令
+    /// 批量执行命令（串行执行）
     pub fn execute_batch(&mut self, commands: &[Vec<String>]) -> Result<Vec<Response>> {
         debug!("Executing batch of {} commands", commands.len());
 
@@ -175,6 +267,101 @@ impl ExifToolInner {
         }
 
         Ok(responses)
+    }
+
+    /// 批量执行命令（原子多命令，使用 -execute[NUM]）
+    ///
+    /// 所有命令在一个事务中发送，通过顺序区分响应。
+    /// 使用 -execute1, -execute2 等格式让 ExifTool 在 {ready} 标记中包含编号。
+    pub fn execute_multiple(&mut self, commands: &[Vec<String>]) -> Result<Vec<Response>> {
+        if commands.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        debug!("Executing {} commands atomically", commands.len());
+
+        // 发送所有命令（不立即读取响应）
+        for (idx, args) in commands.iter().enumerate() {
+            let command_num = idx + 1; // 从 1 开始计数
+
+            // 发送参数
+            for arg in args {
+                self.send_line(arg)?;
+            }
+
+            // 发送带编号的执行命令
+            self.send_line(&format!("-execute{}", command_num))?;
+        }
+        self.stdin.flush()?;
+
+        // 按顺序读取所有响应
+        let mut responses = Vec::with_capacity(commands.len());
+        for idx in 0..commands.len() {
+            let expected_num = idx + 1;
+            let response = self.read_response_for_num(Some(expected_num))?;
+            responses.push(response);
+        }
+
+        Ok(responses)
+    }
+
+    /// 读取特定命令编号的响应
+    fn read_response_for_num(&mut self, expected_num: Option<usize>) -> Result<Response> {
+        let mut lines = Vec::new();
+
+        loop {
+            let buffer = match self.stdout_rx.recv_timeout(self.response_timeout) {
+                Ok(line) => line,
+                Err(RecvTimeoutError::Timeout) => return Err(Error::Timeout),
+                Err(RecvTimeoutError::Disconnected) => {
+                    return Err(Error::process("Unexpected EOF from ExifTool process"));
+                }
+            };
+
+            let trimmed = buffer.trim();
+            debug!("Received line: {}", trimmed);
+
+            if trimmed.starts_with("{ready") && trimmed.ends_with('}') {
+                if trimmed == "{ready}" {
+                    // 无编号响应
+                    if let Some(expected) = expected_num {
+                        return Err(Error::process(format!(
+                            "Expected {{ready{}}}, but received {{ready}}",
+                            expected
+                        )));
+                    }
+                    break;
+                }
+
+                // 解析 {readyNUM} 格式
+                let content = &trimmed[6..trimmed.len() - 1];
+
+                // 尝试解析为命令编号
+                match content.parse::<usize>() {
+                    Ok(num) => {
+                        if let Some(expected) = expected_num
+                            && num != expected
+                        {
+                            return Err(Error::process(format!(
+                                "命令编号不匹配: 期望 {}, 收到 {}",
+                                expected, num
+                            )));
+                        }
+                        break;
+                    }
+                    Err(_) => {
+                        return Err(Error::process(format!(
+                            "无法解析 {{ready}} 标记中的编号: {}",
+                            trimmed
+                        )));
+                    }
+                }
+            }
+
+            lines.push(buffer.clone());
+        }
+
+        Ok(Response::new(lines))
     }
 
     /// 刷新 stdin
@@ -357,5 +544,43 @@ mod tests {
 
         let data: TestData = response.json().unwrap();
         assert_eq!(data.key, "value");
+    }
+
+    #[test]
+    fn test_command_id() {
+        let id1 = CommandId::new(1);
+        let id2 = CommandId::new(1);
+        let id3 = CommandId::new(2);
+
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+        assert_eq!(id1.value(), 1);
+        assert_eq!(id3.value(), 2);
+    }
+
+    #[test]
+    fn test_command_request() {
+        let args = vec!["-ver".to_string()];
+
+        let req1 = CommandRequest::new(args.clone());
+        assert!(req1.id.is_none());
+        assert_eq!(req1.args, args);
+
+        let req2 = CommandRequest::with_id(CommandId::new(42), args.clone());
+        assert_eq!(req2.id.unwrap().value(), 42);
+        assert_eq!(req2.args, args);
+    }
+
+    #[test]
+    fn test_command_response_with_num() {
+        // 测试带编号的响应解析
+        use std::sync::atomic::{AtomicU32, Ordering};
+
+        let counter = AtomicU32::new(1);
+        let id1 = counter.fetch_add(1, Ordering::SeqCst);
+        let id2 = counter.fetch_add(1, Ordering::SeqCst);
+
+        assert_eq!(id1, 1);
+        assert_eq!(id2, 2);
     }
 }

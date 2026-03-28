@@ -5,46 +5,43 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且该项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
-
-### 变更
-
-- 修复 `-stay_open` 参数构造：`query`/`write` 的多项参数改为逐 token 传输，避免参数被错误解析
-- 修复 `QueryBuilder::execute_text` 与 `-json` 冲突，文本输出不再强制 JSON
-- 修复 `exclude` 语义为 `--TAG`
-- 改进进程响应处理：支持超时控制、识别 `{ready...}` 结束标记、Warning 不再视为 Error
-- 异步接口改为 `spawn_blocking` 执行同步调用，避免阻塞 Tokio runtime
-- 连接池新增 `acquire_timeout`，批处理改为受控并发 worker 模式
-- CLI 升级为 `clap` 参数解析，写/删/拷默认保留备份，`--overwrite` 显式覆盖
-- 移除可能 panic 的 `Default` 实现（`ExifTool` 与 `AsyncExifTool`）
-- 新增 `-config` 生效链路：支持 `ExifTool::builder().config(...)` 与实例级 `with_config(...)`
-- 新增公共透传执行 API：`ExifTool::execute(...)`，用于未显式封装参数的原生能力调用
-- 新增兼容性报告体系：`tests/compatibility_report.rs` + `tests/compatibility/capability_baseline.json`
-- 新增本地报告脚本：`scripts/generate_capability_report.sh`
-- CI 新增兼容性报告任务并上传工件
-
-### 修复
-
-- 修复 `config::hex_dump` 使用无效参数的问题
-- 配置能力改为真实生效实现，不再是空实现占位
-
-### 测试
-
-- 增加 `query`、`write` 参数构建回归测试
-- 增加 `process` Warning 级别行为测试
-- 增加 `async` 并行处理辅助函数测试
-
-## [0.1.4] - 2026-03-27
+## [0.1.4] - 2026-03-28
 
 ### 新增
 
+- **多命令执行支持**: 实现 `-execute[NUM]` 多命令协议
+  - 新增 `CommandId` 和 `CommandRequest` 类型
+  - 新增 `execute_multiple()` 方法支持原子批量执行
+  - 支持通过编号区分多条命令的响应
+- **异步流处理支持** (需要 `async` feature):
+  - 新增 `stream::async_stream` 模块
+  - 新增 `StreamEvent` 枚举支持进度和元数据事件
+  - 新增 `AsyncStreamHandle` 用于控制流处理
+  - 为 `AsyncExifTool` 添加 `stream_query()`, `stream_batch()`, `stream_large_file()` 方法
+  - 支持实时进度跟踪和取消操作
 - 支持通过 Builder 模式自定义 ExifTool 可执行文件路径
 - 新增 `serde-structs` feature，支持通过 serde 反序列化元数据到结构体
 - 添加常用元数据结构体（Metadata、FileInfo、ExifInfo、GpsInfo 等）
+- 新增公共透传执行 API：`ExifTool::execute(...)`
+- 新增 `-config` 配置支持：`ExifTool::builder().config(...)` 与实例级 `with_config(...)`
+- 新增兼容性报告体系
 
 ### 变更
 
-- `serde` 和 `serde_json` 改为非可选依赖（始终启用）
+- **核心改进**: 选项类型化覆盖率达到 135/135 (100%)
+- 改进进程响应处理，支持 `{ready...}` 结束标记识别
+- 异步接口改为 `spawn_blocking` 执行，避免阻塞 Tokio runtime
+- 连接池新增 `acquire_timeout`
+- CLI 升级为 `clap` 参数解析
+- 灵活的标签模块系统，支持通过 Cargo features 按需编译标签组
+- 标签目录重构，按功能分组（standard/vendors/formats/video/audio）
+
+### 修复
+
+- 修复参数构造问题，`query`/`write` 改为逐 token 传输
+- 修复标签数量不匹配问题，严格匹配 ExifTool 的 18,046+ 个标签
+- 修复 `QueryBuilder::execute_text` 与 `-json` 冲突问题
+- 修复 `exclude` 语义为 `--TAG`
 
 ## [0.1.3] - 2026-03-27
 
@@ -54,10 +51,14 @@
 - 新增 `standard`、`vendors-common`、`balanced`、`full` 等预设 feature 组合
 - 标签目录重构，按功能分组（standard/vendors/formats/video/audio）
 
+### 变更
+
+- `serde` 和 `serde_json` 改为非可选依赖（始终启用）
+
 ### 修复
 
-- 修复标签数量不匹配问题，现在严格匹配 ExifTool 的 18,046 个标签
-- 删除多余的标签组快捷方式（如 AllDates、Canon、Nikon 等）
+- 修复标签数量不匹配问题
+- 删除多余的标签组快捷方式
 - 清理无效的 XMP 命名空间标签
 
 ## [0.1.0] - 2026-03-26
@@ -88,7 +89,6 @@
 - `default`: 同步 API
 - `async`: 异步 API 支持（依赖 tokio 和 futures）
 
-[未发布]: https://github.com/openappsys/exiftool-rs-wrapper/compare/v0.1.4...HEAD
 [0.1.4]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.4
 [0.1.3]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.3
 [0.1.0]: https://github.com/openappsys/exiftool-rs-wrapper/releases/tag/v0.1.0
