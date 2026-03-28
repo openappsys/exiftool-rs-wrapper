@@ -1,37 +1,33 @@
-//! ID3 音频格式标签
+#![allow(non_upper_case_globals)]
+
+//! 标签定义 - audio/id3
 
 use crate::TagId;
 
-pub const ALBUM2: TagId = TagId("Album2");
-pub const ARTIST2: TagId = TagId("Artist2");
-pub const ARTIST_U_R_L: TagId = TagId("ArtistURL");
-pub const AUTHOR: TagId = TagId("Author");
-pub const COMPILATION: TagId = TagId("Compilation");
-pub const COPYRIGHT_U_R_L: TagId = TagId("CopyrightURL");
-pub const ENCODING_TIME: TagId = TagId("EncodingTime");
-pub const J_U_M_B_F: TagId = TagId("JUMBF");
-pub const LENGTH: TagId = TagId("Length");
-pub const MUSIC_C_D_IDENTIFIER: TagId = TagId("MusicCDIdentifier");
-pub const ORIGINAL_ARTIST: TagId = TagId("OriginalArtist");
-pub const ORIGINAL_RELEASE_TIME: TagId = TagId("OriginalReleaseTime");
-pub const PICTURE: TagId = TagId("Picture");
-pub const PICTURE_DESCRIPTION: TagId = TagId("PictureDescription");
-pub const PICTURE_FORMAT: TagId = TagId("PictureFormat");
-pub const PICTURE_M_I_M_E_TYPE: TagId = TagId("PictureMIMEType");
-pub const PICTURE_TYPE: TagId = TagId("PictureType");
-pub const PODCAST: TagId = TagId("Podcast");
-pub const POPULARIMETER: TagId = TagId("Popularimeter");
-pub const PRIVATE: TagId = TagId("Private");
-pub const SPEED: TagId = TagId("Speed");
-pub const SYNCHRONIZED_LYRICS_DESCRIPTION: TagId = TagId("SynchronizedLyricsDescription");
-pub const SYNCHRONIZED_LYRICS_TEXT: TagId = TagId("SynchronizedLyricsText");
-pub const SYNCHRONIZED_LYRICS_TYPE: TagId = TagId("SynchronizedLyricsType");
-pub const TAGGING_TIME: TagId = TagId("TaggingTime");
-pub const TIME: TagId = TagId("Time");
-pub const TITLE2: TagId = TagId("Title2");
-pub const TRACK: TagId = TagId("Track");
-pub const W_M_COLLECTION_GROUP_ID: TagId = TagId("WM_CollectionGroupID");
-pub const W_M_COLLECTION_ID: TagId = TagId("WM_CollectionID");
-pub const W_M_CONTENT_ID: TagId = TagId("WM_ContentID");
-pub const X_M_P: TagId = TagId("XMP");
-pub const ITUNES_U: TagId = TagId("iTunesU");
+pub const CommanderGroupA_TTL_AAComp: TagId = TagId("CommanderGroupA_TTL-AAComp");
+pub const CommanderGroupB_TTL_AAComp: TagId = TagId("CommanderGroupB_TTL-AAComp");
+pub const FileSecurityWave: TagId = TagId("FileSecurityWave");
+pub const FlashExposureComp3: TagId = TagId("FlashExposureComp3");
+pub const IlluminationWaveLength: TagId = TagId("IlluminationWaveLength");
+pub const ImagePathFilterPassThroughWavelen: TagId = TagId("ImagePathFilterPassThroughWavelen");
+pub const LightPathFilterPassThroughWavelen: TagId = TagId("LightPathFilterPassThroughWavelen");
+pub const NumberOfWaveformChannels: TagId = TagId("NumberOfWaveformChannels");
+pub const NumberOfWaveformSamples: TagId = TagId("NumberOfWaveformSamples");
+pub const RWavePointer: TagId = TagId("RWavePointer");
+pub const RWaveTimeVector: TagId = TagId("RWaveTimeVector");
+pub const ReferencedWaveformChannels: TagId = TagId("ReferencedWaveformChannels");
+pub const ReferencedWaveformSequence: TagId = TagId("ReferencedWaveformSequence");
+pub const SourceWaveformSequence: TagId = TagId("SourceWaveformSequence");
+pub const Unknown_AACR: TagId = TagId("Unknown_AACR");
+pub const WAVESummary: TagId = TagId("WAVESummary");
+pub const WaveformBitsAllocated: TagId = TagId("WaveformBitsAllocated");
+pub const WaveformBitsStored: TagId = TagId("WaveformBitsStored");
+pub const WaveformChannelNumber: TagId = TagId("WaveformChannelNumber");
+pub const WaveformData: TagId = TagId("WaveformData");
+pub const WaveformDataDisplayScale: TagId = TagId("WaveformDataDisplayScale");
+pub const WaveformDisplayBkgCIELabValue: TagId = TagId("WaveformDisplayBkgCIELabValue");
+pub const WaveformOriginality: TagId = TagId("WaveformOriginality");
+pub const WaveformPaddingValue: TagId = TagId("WaveformPaddingValue");
+pub const WaveformPresentationGroupSequence: TagId = TagId("WaveformPresentationGroupSequence");
+pub const WaveformSampleInterpretation: TagId = TagId("WaveformSampleInterpretation");
+pub const WaveformSequence: TagId = TagId("WaveformSequence");

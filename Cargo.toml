@@ -1,6 +1,6 @@
 [package]
 name = "exiftool-rs-wrapper"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["Open Application Systems <oss@openappsys.com>"]
 description = "一个高性能、类型安全的 ExifTool Rust 封装库，支持异步 API"

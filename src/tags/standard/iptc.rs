@@ -1,49 +1,21 @@
-//! 标签定义
+#![allow(non_upper_case_globals)]
+
+//! 标签定义 - standard/iptc
 
 use crate::TagId;
 
-pub const IPTC_OBJECT_NAME: TagId = TagId("ObjectName");
-pub const IPTC_EDIT_STATUS: TagId = TagId("EditStatus");
-pub const IPTC_EDITORIAL_UPDATE: TagId = TagId("EditorialUpdate");
-pub const IPTC_URGENCY: TagId = TagId("Urgency");
-pub const IPTC_SUBJECT_REFERENCE: TagId = TagId("SubjectReference");
-pub const IPTC_CATEGORY: TagId = TagId("Category");
-pub const IPTC_SUPPLEMENTAL_CATEGORIES: TagId = TagId("SupplementalCategories");
-pub const IPTC_FIXTURE_IDENTIFIER: TagId = TagId("FixtureIdentifier");
-pub const IPTC_KEYWORDS: TagId = TagId("Keywords");
-pub const IPTC_CONTENT_LOCATION_CODE: TagId = TagId("ContentLocationCode");
-pub const IPTC_CONTENT_LOCATION_NAME: TagId = TagId("ContentLocationName");
-pub const IPTC_RELEASE_DATE: TagId = TagId("ReleaseDate");
-pub const IPTC_RELEASE_TIME: TagId = TagId("ReleaseTime");
-pub const IPTC_EXPIRATION_DATE: TagId = TagId("ExpirationDate");
-pub const IPTC_EXPIRATION_TIME: TagId = TagId("ExpirationTime");
-pub const IPTC_SPECIAL_INSTRUCTIONS: TagId = TagId("SpecialInstructions");
-pub const IPTC_ACTION_ADVISED: TagId = TagId("ActionAdvised");
-pub const IPTC_REFERENCE_SERVICE: TagId = TagId("ReferenceService");
-pub const IPTC_REFERENCE_DATE: TagId = TagId("ReferenceDate");
-pub const IPTC_REFERENCE_NUMBER: TagId = TagId("ReferenceNumber");
-pub const IPTC_DATE_CREATED: TagId = TagId("DateCreated");
-pub const IPTC_TIME_CREATED: TagId = TagId("TimeCreated");
-pub const IPTC_DIGITAL_CREATION_DATE: TagId = TagId("DigitalCreationDate");
-pub const IPTC_DIGITAL_CREATION_TIME: TagId = TagId("DigitalCreationTime");
-pub const IPTC_ORIGINATING_PROGRAM: TagId = TagId("OriginatingProgram");
-pub const IPTC_PROGRAM_VERSION: TagId = TagId("ProgramVersion");
-pub const IPTC_OBJECT_CYCLE: TagId = TagId("ObjectCycle");
-pub const IPTC_BY_LINE: TagId = TagId("By-line");
-pub const IPTC_BY_LINE_TITLE: TagId = TagId("By-lineTitle");
-pub const IPTC_CITY: TagId = TagId("City");
-pub const IPTC_SUB_LOCATION: TagId = TagId("Sub-location");
-pub const IPTC_PROVINCE_STATE: TagId = TagId("Province-State");
-pub const IPTC_COUNTRY_PRIMARY_LOCATION_CODE: TagId = TagId("Country-PrimaryLocationCode");
-pub const IPTC_COUNTRY_PRIMARY_LOCATION_NAME: TagId = TagId("Country-PrimaryLocationName");
-pub const IPTC_ORIGINAL_TRANSMISSION_REFERENCE: TagId = TagId("OriginalTransmissionReference");
-pub const IPTC_HEADLINE: TagId = TagId("Headline");
-pub const IPTC_CREDIT: TagId = TagId("Credit");
-pub const IPTC_SOURCE: TagId = TagId("Source");
-pub const IPTC_COPYRIGHT_NOTICE: TagId = TagId("CopyrightNotice");
-pub const IPTC_CONTACT: TagId = TagId("Contact");
-pub const IPTC_CAPTION_ABSTRACT: TagId = TagId("Caption-Abstract");
-pub const IPTC_WRITER_EDITOR: TagId = TagId("Writer-Editor");
-pub const IPTC_IMAGE_TYPE: TagId = TagId("ImageType");
-pub const IPTC_IMAGE_ORIENTATION: TagId = TagId("ImageOrientation");
-pub const IPTC_LANGUAGE_IDENTIFIER: TagId = TagId("LanguageIdentifier");
+pub const AddIPTCInformation: TagId = TagId("AddIPTCInformation");
+pub const CurrentIPTCDigest: TagId = TagId("CurrentIPTCDigest");
+pub const IPTC: TagId = TagId("IPTC");
+pub const IPTC_NAA: TagId = TagId("IPTC-NAA");
+pub const IPTCBitsPerSample: TagId = TagId("IPTCBitsPerSample");
+pub const IPTCDigest: TagId = TagId("IPTCDigest");
+pub const IPTCImageHeight: TagId = TagId("IPTCImageHeight");
+pub const IPTCImageRotation: TagId = TagId("IPTCImageRotation");
+pub const IPTCImageWidth: TagId = TagId("IPTCImageWidth");
+pub const IPTCLastEdited: TagId = TagId("IPTCLastEdited");
+pub const IPTCPictureNumber: TagId = TagId("IPTCPictureNumber");
+pub const IPTCPixelHeight: TagId = TagId("IPTCPixelHeight");
+pub const IPTCPixelWidth: TagId = TagId("IPTCPixelWidth");
+pub const LastKeywordIPTC: TagId = TagId("LastKeywordIPTC");
+pub const LegacyIPTCDigest: TagId = TagId("LegacyIPTCDigest");
