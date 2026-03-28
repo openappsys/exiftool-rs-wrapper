@@ -470,6 +470,18 @@ impl ExifTool {
         Ok(tags)
     }
 
+    /// 获取可写标签列表（对应 `-listw`）
+    pub fn list_writable_tags(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listw"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
+    /// 获取支持的文件扩展名列表（对应 `-listf`）
+    pub fn list_file_extensions(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listf"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
     /// 执行原始命令
     ///
     /// 这是高级 API，允许直接发送参数到 ExifTool。
@@ -572,6 +584,13 @@ impl ExifTool {
     }
 }
 
+fn parse_word_list(text: String) -> Vec<String> {
+    text.split_whitespace()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.trim().to_string())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -644,5 +663,33 @@ mod tests {
         let response = et.execute(&["-ver"]).expect("execute should succeed");
         let version = response.text().trim().to_string();
         assert!(!version.is_empty());
+    }
+
+    #[test]
+    fn test_list_writable_tags() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let tags = et
+            .list_writable_tags()
+            .expect("list writable tags should succeed");
+        assert!(!tags.is_empty());
+    }
+
+    #[test]
+    fn test_list_file_extensions() {
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let exts = et
+            .list_file_extensions()
+            .expect("list file extensions should succeed");
+        assert!(!exts.is_empty());
     }
 }

@@ -196,6 +196,18 @@ impl AsyncExifTool {
         let exiftool = Arc::clone(&self.inner);
         run_blocking(move || exiftool.close()).await
     }
+
+    /// 异步获取可写标签列表（`-listw`）
+    pub async fn list_writable_tags(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_writable_tags()).await
+    }
+
+    /// 异步获取文件扩展名列表（`-listf`）
+    pub async fn list_file_extensions(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_file_extensions()).await
+    }
 }
 
 /// 异步批量处理辅助函数
@@ -264,5 +276,20 @@ mod tests {
     #[test]
     fn test_async_exiftool_creation() {
         let _ = AsyncExifTool::new();
+    }
+
+    #[tokio::test]
+    async fn test_async_list_writable_tags() {
+        let et = match AsyncExifTool::new() {
+            Ok(et) => et,
+            Err(crate::Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let tags = et
+            .list_writable_tags()
+            .await
+            .expect("list writable tags should succeed");
+        assert!(!tags.is_empty());
     }
 }

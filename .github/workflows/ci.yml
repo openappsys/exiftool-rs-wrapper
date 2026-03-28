@@ -182,25 +182,38 @@ jobs:
 
   # ExifTool 兼容性报告
   compatibility-report:
-    name: 兼容性报告 ${{ matrix.os }}
+    name: 兼容性报告 ${{ matrix.os }} / ${{ matrix.exiftool_source }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        exiftool_source: [system]
+        include:
+          - os: ubuntu-latest
+            exiftool_source: latest
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
       - name: 安装 ExifTool (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.exiftool_source == 'system'
         run: |
           sudo apt-get update
           sudo apt-get install -y libimage-exiftool-perl
 
+      - name: 安装 ExifTool 最新版 (Ubuntu)
+        if: matrix.os == 'ubuntu-latest' && matrix.exiftool_source == 'latest'
+        run: |
+          curl -fsSL -o /tmp/exiftool.tar.gz https://exiftool.org/Image-ExifTool.tar.gz
+          tar -xzf /tmp/exiftool.tar.gz -C /tmp
+          EXIFTOOL_DIR=$(find /tmp -maxdepth 1 -type d -name 'Image-ExifTool-*' | head -n 1)
+          chmod +x "$EXIFTOOL_DIR/exiftool"
+          echo "EXIFTOOL_PATH=$EXIFTOOL_DIR/exiftool" >> $GITHUB_ENV
+
       - name: 安装 ExifTool (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && matrix.exiftool_source == 'system'
         run: brew install exiftool
 
       - name: 安装 Rust
@@ -215,15 +228,21 @@ jobs:
         run: cargo test --test compatibility_report -- --nocapture
 
       - name: 记录 ExifTool 版本
-        run: exiftool -ver > target/compatibility/exiftool-version.txt
+        run: |
+          if [ -n "${EXIFTOOL_PATH:-}" ]; then
+            "$EXIFTOOL_PATH" -ver > target/compatibility/exiftool-version.txt
+          else
+            exiftool -ver > target/compatibility/exiftool-version.txt
+          fi
 
       - name: 上传兼容性报告
         uses: actions/upload-artifact@v4
         with:
-          name: compatibility-report-${{ matrix.os }}
+          name: compatibility-report-${{ matrix.os }}-${{ matrix.exiftool_source }}
           path: |
             target/compatibility/capability-report.json
             target/compatibility/capability-report.md
+            target/compatibility/compatibility-gap-list.md
             target/compatibility/exiftool-version.txt
 
   # 依赖检查

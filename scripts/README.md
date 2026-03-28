@@ -37,6 +37,9 @@
 **用法**:
 ```bash
 ./scripts/generate_capability_report.sh
+
+# 可选：指定 ExifTool 可执行文件路径
+EXIFTOOL_PATH=/path/to/exiftool ./scripts/generate_capability_report.sh
 ```
 
 **输出**:
