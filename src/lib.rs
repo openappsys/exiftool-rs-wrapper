@@ -492,6 +492,46 @@ impl ExifTool {
         Ok(parse_word_list(response.text()))
     }
 
+    /// 获取指定族的分组列表（对应 `-listg[NUM]`）
+    ///
+    /// ExifTool 将标签分组为不同的族（family），使用 `-listg[NUM]` 可以列出特定族的分组。
+    ///
+    /// # 参数
+    ///
+    /// - `family` - 分组族编号（0-7），对应 `-listg0` 到 `-listg7`
+    ///   - Family 0: 信息类型（EXIF、IPTC、XMP 等）
+    ///   - Family 1: 特定位置（MakerNotes、Composite 等）
+    ///   - Family 2: 类别（Image、Camera、Author 等）
+    ///   - Family 3-7: 其他分类方式
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 获取 Family 1 的分组列表（特定位置）
+    /// let family1_groups = exiftool.list_groups_family(1)?;
+    /// println!("Family 1 分组: {:?}", family1_groups);
+    ///
+    /// // 获取 Family 2 的分组列表（类别）
+    /// let family2_groups = exiftool.list_groups_family(2)?;
+    /// println!("Family 2 分组: {:?}", family2_groups);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn list_groups_family(&self, family: u8) -> Result<Vec<String>> {
+        let args = if family == 0 {
+            vec!["-listg".to_string()]
+        } else {
+            vec![format!("-listg{}", family)]
+        };
+        let response = self.execute(&args)?;
+        Ok(parse_word_list(response.text()))
+    }
+
     /// 获取标签描述列表（对应 `-listd`）
     pub fn list_descriptions(&self) -> Result<Vec<String>> {
         let response = self.execute(&["-listd"])?;

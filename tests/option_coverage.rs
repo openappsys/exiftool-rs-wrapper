@@ -175,11 +175,15 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-ec",                          // escape(EscapeFormat::C)
         "-echo",                        // echo
         "-echo2",                       // echo (stderr)
+        "-echo3",                       // echo_level(3)
+        "-echo4",                       // echo_level(4)
         "-efile",                       // efile
         "-ex",                          // escape(EscapeFormat::Xml)
         "-execute",                     // 内部协议，process.rs 中使用
         "-ext",                         // extension
         "-extractEmbedded",             // extract_embedded
+        "-extractEmbedded3",            // extract_embedded(Some(3))
+        "-extractEmbedded4",            // extract_embedded(Some(4))
         "-f",                           // force_print
         "-fast",                        // fast(Some(1))
         "-fast2",                       // fast(Some(2))
@@ -203,6 +207,10 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-listd",                       // ExifTool::list_descriptions
         "-listf",                       // ExifTool::list_file_extensions
         "-listg",                       // ExifTool::list_groups
+        "-listg1",                      // ExifTool::list_groups_family(1)
+        "-listg2",                      // ExifTool::list_groups_family(2)
+        "-listg3",                      // ExifTool::list_groups_family(3)
+        "-listg4",                      // ExifTool::list_groups_family(4)
         "-listItem",                    // QueryBuilder::list_item
         "-list_dir",                    // QueryBuilder::list_dir
         "-listw",                       // ExifTool::list_writable_tags
@@ -223,6 +231,8 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-r",                           // recursive
         "-r.",                          // recursive_hidden
         "-s",                           // short_format / short
+        "-s1",                          // short_format_level(1)
+        "-s3",                          // short_format_level(3)
         "-S",                           // short_format(Some(0)) / very_short
         "-scanForXMP",                  // scan_for_xmp
         "-sep",                         // separator
@@ -325,11 +335,15 @@ fn catalog_options() -> Vec<&'static str> {
         "-efile2!",
         "-echo",
         "-echo2",
+        "-echo3",
+        "-echo4",
         "-ex",
         "-execute",
         "-ext",
         "-ext+",
         "-extractEmbedded",
+        "-extractEmbedded3",
+        "-extractEmbedded4",
         "-f",
         "-F",
         "-fast",
@@ -363,6 +377,10 @@ fn catalog_options() -> Vec<&'static str> {
         "-listd",
         "-listf",
         "-listg",
+        "-listg1",
+        "-listg2",
+        "-listg3",
+        "-listg4",
         "-listgeo",
         "-listItem",
         "-list_dir",
@@ -387,6 +405,8 @@ fn catalog_options() -> Vec<&'static str> {
         "-r.",
         "-restore_original",
         "-s",
+        "-s1",
+        "-s3",
         "-S",
         "-scanForXMP",
         "-sep",

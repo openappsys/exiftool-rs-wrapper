@@ -786,6 +786,41 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 显式指定短格式级别
+    ///
+    /// 使用 `-sNUM` 选项显式指定短格式级别，支持 `-s1`、`-s2`、`-s3`。
+    ///
+    /// # 参数
+    ///
+    /// - `level` - 短格式级别（1、2 或 3）
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用 -s1 显式指定级别 1
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .short_format_level(1)
+    ///     .execute()?;
+    ///
+    /// // 使用 -s3 最短格式
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .short_format_level(3)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn short_format_level(mut self, level: u8) -> Self {
+        if (1..=3).contains(&level) {
+            self.args.push(format!("-s{}", level));
+        }
+        self
+    }
+
     /// 极短输出格式
     ///
     /// 使用 `-S` 选项以极短格式输出（仅标签名和值）
@@ -1473,6 +1508,42 @@ impl<'et> QueryBuilder<'et> {
     /// - `target`: 输出目标，None表示stdout，Some("stderr")表示stderr
     pub fn echo(mut self, text: impl Into<String>, target: Option<impl Into<String>>) -> Self {
         self.echo.push((text.into(), target.map(|t| t.into())));
+        self
+    }
+
+    /// 指定级别的echo输出
+    ///
+    /// 使用 `-echoNUM` 选项在处理期间输出文本到指定级别的输出流。
+    /// - 级别 1: stdout (等价于 `-echo`)
+    /// - 级别 2: stderr (等价于 `-echo2`)
+    /// - 级别 3: 额外输出级别3
+    /// - 级别 4: 额外输出级别4
+    ///
+    /// # 参数
+    ///
+    /// - `level` - echo级别 (1-4)
+    /// - `text` - 要输出的文本
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 使用 -echo3 输出到级别3
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .echo_level(3, "Processing...")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn echo_level(mut self, level: u8, text: impl Into<String>) -> Self {
+        if (1..=4).contains(&level) {
+            self.args.push(format!("-echo{}", level));
+            self.args.push(text.into());
+        }
         self
     }
 
