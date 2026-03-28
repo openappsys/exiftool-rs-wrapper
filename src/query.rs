@@ -55,7 +55,8 @@ pub struct QueryBuilder<'et> {
     file_order: Option<(String, bool)>,
     quiet: bool,
     // 高级输出选项
-    html_dump: Option<u32>,
+    html_dump_enabled: bool,
+    html_dump_offset: Option<u32>,
     php_format: bool,
     plot_format: bool,
     args_format: bool,
@@ -104,7 +105,8 @@ impl<'et> QueryBuilder<'et> {
             file_order: None,
             quiet: false,
             // 高级输出选项
-            html_dump: None,
+            html_dump_enabled: false,
+            html_dump_offset: None,
             php_format: false,
             plot_format: false,
             args_format: false,
@@ -1061,6 +1063,75 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// HTML 转义输出
+    ///
+    /// 使用 `-E` 选项对标签值进行 HTML 实体转义。
+    /// 这是 `escape(EscapeFormat::Html)` 的快捷方法。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .escape_html()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn escape_html(self) -> Self {
+        self.escape(EscapeFormat::Html)
+    }
+
+    /// XML 转义输出
+    ///
+    /// 使用 `-ex` 选项对标签值进行 XML 转义。
+    /// 这是 `escape(EscapeFormat::Xml)` 的快捷方法。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .escape_xml()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn escape_xml(self) -> Self {
+        self.escape(EscapeFormat::Xml)
+    }
+
+    /// C 语言转义输出
+    ///
+    /// 使用 `-ec` 选项对标签值进行 C 语言风格转义。
+    /// 这是 `escape(EscapeFormat::C)` 的快捷方法。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .escape_c()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn escape_c(self) -> Self {
+        self.escape(EscapeFormat::C)
+    }
+
     /// 强制打印
     ///
     /// 使用 `-f` 选项强制打印所有指定标签
@@ -1165,6 +1236,32 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 列出目录而非文件
+    ///
+    /// 使用 `-list_dir` 选项让 ExifTool 列出目录名而非处理文件。
+    /// 与 `-r` 递归选项配合使用时，输出目录树结构。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 列出目录而非文件
+    /// let output = exiftool.query("/photos")
+    ///     .list_dir()
+    ///     .recursive(true)
+    ///     .execute_text()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn list_dir(mut self) -> Self {
+        self.args.push("-list_dir".to_string());
+        self
+    }
+
     /// 文件处理顺序
     ///
     /// 使用 `-fileOrder` 选项设置文件处理顺序
@@ -1181,12 +1278,28 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
-    /// HTML二进制转储
+    /// HTML 二进制转储
     ///
-    /// 使用 `-htmlDump` 选项生成HTML格式的二进制转储
-    /// 可以指定可选的偏移量
+    /// 使用 `-htmlDump` 选项生成 HTML 格式的二进制转储。
+    /// 可以指定可选的偏移量。
+    ///
+    /// # 参数
+    ///
+    /// - `offset` - 可选的起始偏移量。`None` 表示无偏移（纯 `-htmlDump`），
+    ///   `Some(n)` 表示带偏移量（`-htmlDumpN`）
     pub fn html_dump(mut self, offset: Option<u32>) -> Self {
-        self.html_dump = offset;
+        self.html_dump_enabled = true;
+        self.html_dump_offset = offset;
+        self
+    }
+
+    /// HTML 二进制转储（带指定偏移量）
+    ///
+    /// 使用 `-htmlDumpOFFSET` 选项生成带偏移量的 HTML 二进制转储。
+    /// 这是 `html_dump(Some(offset))` 的便捷方法。
+    pub fn html_dump_offset(mut self, offset: u32) -> Self {
+        self.html_dump_enabled = true;
+        self.html_dump_offset = Some(offset);
         self
     }
 
@@ -1239,6 +1352,190 @@ impl<'et> QueryBuilder<'et> {
     /// 使用 `-efile` 选项将处理失败的文件名保存到指定文件
     pub fn efile(mut self, filename: impl Into<String>) -> Self {
         self.efile = Some(filename.into());
+        self
+    }
+
+    /// 保存错误文件名到文件（带级别和强制标志）
+    ///
+    /// 使用 `-efileNUM` 或 `-efile!` 或 `-efileNUM!` 变体。
+    ///
+    /// # 参数
+    ///
+    /// - `filename` - 输出文件路径
+    /// - `num` - 可选级别（2、3 等），`None` 表示默认级别
+    /// - `force` - 是否使用 `!` 后缀（强制覆盖）
+    pub fn efile_variant(
+        mut self,
+        filename: impl Into<String>,
+        num: Option<u8>,
+        force: bool,
+    ) -> Self {
+        let num_str = num.map_or(String::new(), |n| n.to_string());
+        let force_str = if force { "!" } else { "" };
+        self.args.push(format!("-efile{}{}", num_str, force_str));
+        self.args.push(filename.into());
+        self
+    }
+
+    /// 详细模式
+    ///
+    /// 使用 `-v` 或 `-vNUM` 选项设置详细输出级别（0-5）。
+    ///
+    /// # 参数
+    ///
+    /// - `level` - 详细级别，`None` 表示 `-v`（默认级别 1），
+    ///   `Some(n)` 表示 `-vN`
+    pub fn verbose(mut self, level: Option<u8>) -> Self {
+        match level {
+            Some(n) => self.args.push(format!("-v{}", n)),
+            None => self.args.push("-v".to_string()),
+        }
+        self
+    }
+
+    /// 追加扩展名过滤
+    ///
+    /// 使用 `-ext+` 选项追加文件扩展名过滤（而非替换已有列表）。
+    /// 与 `extension()` 不同，此方法会在已有扩展名列表基础上追加。
+    pub fn extension_add(mut self, ext: impl Into<String>) -> Self {
+        self.args.push("-ext+".to_string());
+        self.args.push(ext.into());
+        self
+    }
+
+    /// 次级文件处理顺序
+    ///
+    /// 使用 `-fileOrderNUM` 选项设置次级排序。
+    /// `num` 为排序优先级（如 2 表示 `-fileOrder2`）。
+    pub fn file_order_secondary(
+        mut self,
+        num: u8,
+        tag: impl Into<String>,
+        descending: bool,
+    ) -> Self {
+        let order = if descending { "-" } else { "" };
+        self.args.push(format!("-fileOrder{}", num));
+        self.args.push(format!("{}{}", order, tag.into()));
+        self
+    }
+
+    /// 条件过滤（带编号）
+    ///
+    /// 使用 `-ifNUM` 选项设置条件过滤。
+    /// `-if2` 在第一个条件失败时仍然继续检查。
+    /// `-if3` 及更高编号用于更细粒度的控制。
+    ///
+    /// # 参数
+    ///
+    /// - `num` - 条件编号（如 2 表示 `-if2`）
+    /// - `expr` - 条件表达式
+    pub fn condition_num(mut self, num: u8, expr: impl Into<String>) -> Self {
+        self.args.push(format!("-if{}", num));
+        self.args.push(expr.into());
+        self
+    }
+
+    /// 标签输出到文件（追加模式）
+    ///
+    /// 使用 `-W+` 选项为每个标签创建输出文件，追加到已有文件。
+    pub fn tag_out_append(mut self, format: impl Into<String>) -> Self {
+        self.args.push("-W+".to_string());
+        self.args.push(format.into());
+        self
+    }
+
+    /// 标签输出到文件（仅创建新文件）
+    ///
+    /// 使用 `-W!` 选项为每个标签创建输出文件，但不覆盖已有文件。
+    pub fn tag_out_create(mut self, format: impl Into<String>) -> Self {
+        self.args.push("-W!".to_string());
+        self.args.push(format.into());
+        self
+    }
+
+    /// 文本输出到文件（追加模式）
+    ///
+    /// 使用 `-w+` 选项将输出追加到已有文件。
+    pub fn text_out_append(mut self, ext: impl Into<String>) -> Self {
+        self.args.push("-w+".to_string());
+        self.args.push(ext.into());
+        self
+    }
+
+    /// 文本输出到文件（仅创建新文件）
+    ///
+    /// 使用 `-w!` 选项将输出写入新文件，但不覆盖已有文件。
+    pub fn text_out_create(mut self, ext: impl Into<String>) -> Self {
+        self.args.push("-w!".to_string());
+        self.args.push(ext.into());
+        self
+    }
+
+    /// 自定义打印格式（不追加换行符）
+    ///
+    /// 使用 `-p-` 选项按指定格式打印输出，但不在每行末尾追加换行符。
+    /// 与 `print_format()` 的区别在于输出不会自动追加换行。
+    pub fn print_format_no_newline(mut self, format: impl Into<String>) -> Self {
+        self.args.push("-p-".to_string());
+        self.args.push(format.into());
+        self
+    }
+
+    /// 导入 JSON 文件中的标签
+    ///
+    /// 使用 `-j=JSONFILE` 选项从 JSON 文件中导入标签数据。
+    pub fn json_import(mut self, path: impl Into<String>) -> Self {
+        self.args.push(format!("-j={}", path.into()));
+        self
+    }
+
+    /// 追加导入 JSON 文件中的标签
+    ///
+    /// 使用 `-j+=JSONFILE` 选项从 JSON 文件中追加导入标签数据。
+    pub fn json_append(mut self, path: impl Into<String>) -> Self {
+        self.args.push(format!("-j+={}", path.into()));
+        self
+    }
+
+    /// 导入 CSV 文件中的标签
+    ///
+    /// 使用 `-csv=CSVFILE` 选项从 CSV 文件中导入标签数据。
+    pub fn csv_import(mut self, path: impl Into<String>) -> Self {
+        self.args.push(format!("-csv={}", path.into()));
+        self
+    }
+
+    /// 追加导入 CSV 文件中的标签
+    ///
+    /// 使用 `-csv+=CSVFILE` 选项从 CSV 文件中追加导入标签数据。
+    pub fn csv_append(mut self, path: impl Into<String>) -> Self {
+        self.args.push(format!("-csv+={}", path.into()));
+        self
+    }
+
+    /// 修复 MakerNotes 基准偏移
+    ///
+    /// 使用 `-F` 选项修复 MakerNotes 的基准偏移。
+    /// 不带参数时自动修复，带偏移量时使用指定偏移。
+    ///
+    /// # 参数
+    ///
+    /// - `offset` - 可选的偏移量修正值。`None` 表示自动修复（`-F`），
+    ///   `Some(n)` 表示指定偏移（`-Fn`）
+    pub fn fix_base(mut self, offset: Option<i64>) -> Self {
+        match offset {
+            Some(n) => self.args.push(format!("-F{}", n)),
+            None => self.args.push("-F".to_string()),
+        }
+        self
+    }
+
+    /// 修复 MakerNotes 基准偏移（带指定偏移量）
+    ///
+    /// 使用 `-FOFFSET` 选项修复 MakerNotes 偏移。
+    /// 这是 `fix_base(Some(offset))` 的便捷方法。
+    pub fn fix_base_offset(mut self, offset: i64) -> Self {
+        self.args.push(format!("-F{}", offset));
         self
     }
 
@@ -1342,13 +1639,9 @@ impl<'et> QueryBuilder<'et> {
             args.push("-f".to_string());
         }
 
-        // 组名
+        // 组名（-G0, -G1, -G2 等）
         if let Some(level) = self.group_names {
-            if level == 1 {
-                args.push("-G".to_string());
-            } else {
-                args.push(format!("-G{}", level));
-            }
+            args.push(format!("-G{}", level));
         }
 
         // HTML 格式
@@ -1426,9 +1719,12 @@ impl<'et> QueryBuilder<'et> {
             args.push("-q".to_string());
         }
 
-        // HTML二进制转储
-        if let Some(offset) = self.html_dump {
-            args.push(format!("-htmlDump{}", offset));
+        // HTML 二进制转储
+        if self.html_dump_enabled {
+            match self.html_dump_offset {
+                Some(offset) => args.push(format!("-htmlDump{}", offset)),
+                None => args.push("-htmlDump".to_string()),
+            }
         }
 
         // PHP数组格式

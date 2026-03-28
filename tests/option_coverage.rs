@@ -203,7 +203,10 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-listd",                       // ExifTool::list_descriptions
         "-listf",                       // ExifTool::list_file_extensions
         "-listg",                       // ExifTool::list_groups
+        "-listItem",                    // QueryBuilder::list_item
+        "-list_dir",                    // QueryBuilder::list_dir
         "-listw",                       // ExifTool::list_writable_tags
+        "-listwf",                      // ExifTool::list_writable_file_extensions
         "-listx",                       // listx（execute 透传）
         "-m",                           // ignore_minor_errors
         "-n",                           // raw_values / no_print_conv
@@ -243,6 +246,11 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-z",                           // WriteBuilder::zip_compression
         // 写入选项（WriteBuilder 方法）
         "-F",            // fix_base
+        "-TAG+=VALUE",   // WriteBuilder::tag_append
+        "-TAG-=VALUE",   // WriteBuilder::tag_remove
+        "-TAG^=VALUE",   // WriteBuilder::tag_prepend
+        "-TAG<=FILE",    // WriteBuilder::tag_from_file
+        "-TAG+<=FILE",   // WriteBuilder::tag_append_from_file
         "-tagsFromFile", // WriteBuilder::copy_from
         // 全局/配置选项
         "-config",           // ExifToolBuilder::config
@@ -254,6 +262,24 @@ fn typed_option_set() -> HashSet<&'static str> {
         "-diff", // ConfigOperations::diff
         // 格式操作
         "-csv", // FormatOperations::read_csv / OutputFormat::Csv
+        // 参数变体支持
+        "-csv=FILE",   // QueryBuilder::csv_import / WriteBuilder::csv_import
+        "-csv+=FILE",  // QueryBuilder::csv_append / WriteBuilder::csv_append
+        "-efile!",     // efile_variant(_, None, true)
+        "-efile2",     // efile_variant(_, Some(2), false)
+        "-efile2!",    // efile_variant(_, Some(2), true)
+        "-ext+",       // extension_add
+        "-fileOrder2", // file_order_secondary
+        "-htmlDump0",  // html_dump_offset
+        "-if2",        // condition_num(2, ...)
+        "-if3",        // condition_num(3, ...)
+        "-j=FILE",     // QueryBuilder::json_import / WriteBuilder::json_import
+        "-j+=FILE",    // QueryBuilder::json_append / WriteBuilder::json_append
+        "-p-",         // print_format_no_newline
+        "-w+",         // text_out_append
+        "-w!",         // text_out_create
+        "-W+",         // tag_out_append
+        "-W!",         // tag_out_create
     ]
     .into_iter()
     .collect()
@@ -271,6 +297,8 @@ fn catalog_options() -> Vec<&'static str> {
         "-common_args",
         "-config",
         "-csv",
+        "-csv=FILE",
+        "-csv+=FILE",
         "-csvDelim",
         "-d",
         "-D",
@@ -281,11 +309,15 @@ fn catalog_options() -> Vec<&'static str> {
         "-E",
         "-ec",
         "-efile",
+        "-efile!",
+        "-efile2",
+        "-efile2!",
         "-echo",
         "-echo2",
         "-ex",
         "-execute",
         "-ext",
+        "-ext+",
         "-extractEmbedded",
         "-f",
         "-F",
@@ -293,6 +325,7 @@ fn catalog_options() -> Vec<&'static str> {
         "-fast2",
         "-fileNUM",
         "-fileOrder",
+        "-fileOrder2",
         "-G",
         "-g",
         "-geotag",
@@ -300,9 +333,14 @@ fn catalog_options() -> Vec<&'static str> {
         "-h",
         "-H",
         "-htmlDump",
+        "-htmlDump0",
         "-if",
+        "-if2",
+        "-if3",
         "-i",
         "-j",
+        "-j=FILE",
+        "-j+=FILE",
         "-json",
         "-k",
         "-l",
@@ -312,7 +350,10 @@ fn catalog_options() -> Vec<&'static str> {
         "-listd",
         "-listf",
         "-listg",
+        "-listItem",
+        "-list_dir",
         "-listw",
+        "-listwf",
         "-listx",
         "-m",
         "-n",
@@ -320,6 +361,7 @@ fn catalog_options() -> Vec<&'static str> {
         "-overwrite_original",
         "-overwrite_original_in_place",
         "-p",
+        "-p-",
         "-P",
         "-password",
         "-php",
@@ -339,6 +381,11 @@ fn catalog_options() -> Vec<&'static str> {
         "-struct",
         "-t",
         "-T",
+        "-TAG+=VALUE",
+        "-TAG-=VALUE",
+        "-TAG^=VALUE",
+        "-TAG<=FILE",
+        "-TAG+<=FILE",
         "-tagsFromFile",
         "-u",
         "-U",
@@ -347,7 +394,11 @@ fn catalog_options() -> Vec<&'static str> {
         "-v",
         "-ver",
         "-w",
+        "-w+",
+        "-w!",
         "-W",
+        "-W+",
+        "-W!",
         "-Wext",
         "-wm",
         "-x",
@@ -473,7 +524,7 @@ fn test_auto_extract_options_from_help() {
 
 fn option_semantics(option: &str) -> (String, String, String) {
     match option {
-        "-list" | "-listw" | "-listf" | "-listx" | "-listg" | "-listd" | "-ver" => (
+        "-list" | "-listw" | "-listwf" | "-listf" | "-listx" | "-listg" | "-listd" | "-ver" => (
             "无文件输入，纯探测选项".to_string(),
             "文本输出，可解析为能力信息".to_string(),
             "命令失败时返回 ExifTool 错误".to_string(),

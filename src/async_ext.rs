@@ -277,6 +277,12 @@ impl AsyncExifTool {
         run_blocking(move || exiftool.list_descriptions()).await
     }
 
+    /// 异步获取可写文件类型扩展名列表
+    pub async fn list_writable_file_extensions(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_writable_file_extensions()).await
+    }
+
     /// 异步生成能力快照
     pub async fn capability_snapshot(&self) -> Result<CapabilitySnapshot> {
         let exiftool = Arc::clone(&self.inner);

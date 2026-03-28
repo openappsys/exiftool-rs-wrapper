@@ -42,7 +42,8 @@ pub struct WriteBuilder<'et> {
     preserve_time: bool,
     quiet: bool,
     zip_compression: bool,
-    fix_base: Option<u32>,
+    fix_base_enabled: bool,
+    fix_base_offset: Option<i64>,
     raw_args: Vec<String>,
 }
 
@@ -62,7 +63,8 @@ impl<'et> WriteBuilder<'et> {
             preserve_time: false,
             quiet: false,
             zip_compression: false,
-            fix_base: None,
+            fix_base_enabled: false,
+            fix_base_offset: None,
             raw_args: Vec::new(),
         }
     }
@@ -83,6 +85,144 @@ impl<'et> WriteBuilder<'et> {
         for (k, v) in tags {
             self.tags.insert(k.into(), v.into());
         }
+        self
+    }
+
+    /// 追加值到标签（`-TAG+=VALUE`）
+    ///
+    /// 使用 `+=` 运算符将值追加到现有标签值后面。
+    /// 适用于列表类型的标签，如 Keywords 等。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 追加关键词到现有列表
+    /// exiftool.write("photo.jpg")
+    ///     .tag_append("Keywords", "landscape")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tag_append(mut self, tag: impl Into<String>, value: impl Into<String>) -> Self {
+        self.raw_args
+            .push(format!("-{}+={}", tag.into(), value.into()));
+        self
+    }
+
+    /// 从标签中移除值（`-TAG-=VALUE`）
+    ///
+    /// 使用 `-=` 运算符从现有标签值中移除指定值。
+    /// 适用于列表类型的标签。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从关键词列表中移除某个关键词
+    /// exiftool.write("photo.jpg")
+    ///     .tag_remove("Keywords", "old-keyword")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tag_remove(mut self, tag: impl Into<String>, value: impl Into<String>) -> Self {
+        self.raw_args
+            .push(format!("-{}-={}", tag.into(), value.into()));
+        self
+    }
+
+    /// 前置值到标签（`-TAG^=VALUE`）
+    ///
+    /// 使用 `^=` 运算符将值前置到现有标签值之前。
+    /// 适用于列表类型的标签。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 在关键词列表前面插入关键词
+    /// exiftool.write("photo.jpg")
+    ///     .tag_prepend("Keywords", "important")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tag_prepend(mut self, tag: impl Into<String>, value: impl Into<String>) -> Self {
+        self.raw_args
+            .push(format!("-{}^={}", tag.into(), value.into()));
+        self
+    }
+
+    /// 从文件读取值写入标签（`-TAG<=FILE`）
+    ///
+    /// 使用 `<=` 运算符从指定文件中读取数据作为标签值。
+    /// 常用于写入二进制数据（如缩略图、预览图）。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从文件读取缩略图写入
+    /// exiftool.write("photo.jpg")
+    ///     .tag_from_file("ThumbnailImage", "thumb.jpg")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tag_from_file(mut self, tag: impl Into<String>, file_path: impl Into<String>) -> Self {
+        self.raw_args
+            .push(format!("-{}<={}", tag.into(), file_path.into()));
+        self
+    }
+
+    /// 追加从文件读取的值到标签（`-TAG+<=FILE`）
+    ///
+    /// 使用 `+<=` 运算符从指定文件中读取数据追加到现有标签值。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从文件追加数据到标签
+    /// exiftool.write("photo.jpg")
+    ///     .tag_append_from_file("Comment", "comment.txt")
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tag_append_from_file(
+        mut self,
+        tag: impl Into<String>,
+        file_path: impl Into<String>,
+    ) -> Self {
+        self.raw_args
+            .push(format!("-{}+<={}", tag.into(), file_path.into()));
         self
     }
 
@@ -362,8 +502,19 @@ impl<'et> WriteBuilder<'et> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn fix_base(mut self, offset: Option<u32>) -> Self {
-        self.fix_base = offset;
+    pub fn fix_base(mut self, offset: Option<i64>) -> Self {
+        self.fix_base_enabled = true;
+        self.fix_base_offset = offset;
+        self
+    }
+
+    /// 修复 MakerNotes 偏移（带指定偏移量）
+    ///
+    /// 使用 `-FOFFSET` 选项指定具体偏移量修复 MakerNotes。
+    /// 这是 `fix_base(Some(offset))` 的便捷方法。
+    pub fn fix_base_offset(mut self, offset: i64) -> Self {
+        self.fix_base_enabled = true;
+        self.fix_base_offset = Some(offset);
         self
     }
 
@@ -409,6 +560,177 @@ impl<'et> WriteBuilder<'et> {
         self.raw_args.push("-tagsFromFile".to_string());
         self.raw_args
             .push(source.as_ref().to_string_lossy().to_string());
+        self
+    }
+
+    /// 条件过滤（带编号）
+    ///
+    /// 使用 `-ifNUM` 选项设置条件过滤。
+    /// `-if2` 在第一个条件失败时仍然继续检查。
+    ///
+    /// # 参数
+    ///
+    /// - `num` - 条件编号（如 2 表示 `-if2`）
+    /// - `expr` - 条件表达式
+    pub fn condition_num(mut self, num: u8, expr: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-if{}", num));
+        self.raw_args.push(expr.into());
+        self
+    }
+
+    /// 详细模式
+    ///
+    /// 使用 `-v` 或 `-vNUM` 选项设置写入时的详细输出级别。
+    pub fn verbose(mut self, level: Option<u8>) -> Self {
+        match level {
+            Some(n) => self.raw_args.push(format!("-v{}", n)),
+            None => self.raw_args.push("-v".to_string()),
+        }
+        self
+    }
+
+    /// 自定义打印格式（不追加换行符）
+    ///
+    /// 使用 `-p-` 选项按指定格式打印输出，不自动追加换行。
+    pub fn print_format_no_newline(mut self, format: impl Into<String>) -> Self {
+        self.raw_args.push("-p-".to_string());
+        self.raw_args.push(format.into());
+        self
+    }
+
+    /// 自定义打印格式
+    ///
+    /// 使用 `-p` 选项按指定格式打印输出。
+    pub fn print_format(mut self, format: impl Into<String>) -> Self {
+        self.raw_args.push("-p".to_string());
+        self.raw_args.push(format.into());
+        self
+    }
+
+    /// 保存错误文件名到文件（带级别和强制标志）
+    ///
+    /// 使用 `-efileNUM` 或 `-efile!` 或 `-efileNUM!` 变体。
+    ///
+    /// # 参数
+    ///
+    /// - `filename` - 输出文件路径
+    /// - `num` - 可选级别（2、3 等），`None` 表示默认级别
+    /// - `force` - 是否使用 `!` 后缀（强制覆盖）
+    pub fn efile_variant(
+        mut self,
+        filename: impl Into<String>,
+        num: Option<u8>,
+        force: bool,
+    ) -> Self {
+        let num_str = num.map_or(String::new(), |n| n.to_string());
+        let force_str = if force { "!" } else { "" };
+        self.raw_args
+            .push(format!("-efile{}{}", num_str, force_str));
+        self.raw_args.push(filename.into());
+        self
+    }
+
+    /// 导入 JSON 文件中的标签
+    ///
+    /// 使用 `-j=JSONFILE` 选项从 JSON 文件中导入标签数据。
+    pub fn json_import(mut self, path: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-j={}", path.into()));
+        self
+    }
+
+    /// 追加导入 JSON 文件中的标签
+    ///
+    /// 使用 `-j+=JSONFILE` 选项从 JSON 文件中追加导入标签数据。
+    pub fn json_append(mut self, path: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-j+={}", path.into()));
+        self
+    }
+
+    /// 导入 CSV 文件中的标签
+    ///
+    /// 使用 `-csv=CSVFILE` 选项从 CSV 文件中导入标签数据。
+    pub fn csv_import(mut self, path: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-csv={}", path.into()));
+        self
+    }
+
+    /// 追加导入 CSV 文件中的标签
+    ///
+    /// 使用 `-csv+=CSVFILE` 选项从 CSV 文件中追加导入标签数据。
+    pub fn csv_append(mut self, path: impl Into<String>) -> Self {
+        self.raw_args.push(format!("-csv+={}", path.into()));
+        self
+    }
+
+    /// 文本输出到文件（追加模式）
+    ///
+    /// 使用 `-w+` 选项将输出追加到已有文件。
+    pub fn text_out_append(mut self, ext: impl Into<String>) -> Self {
+        self.raw_args.push("-w+".to_string());
+        self.raw_args.push(ext.into());
+        self
+    }
+
+    /// 文本输出到文件（仅创建新文件）
+    ///
+    /// 使用 `-w!` 选项将输出写入新文件，但不覆盖已有文件。
+    pub fn text_out_create(mut self, ext: impl Into<String>) -> Self {
+        self.raw_args.push("-w!".to_string());
+        self.raw_args.push(ext.into());
+        self
+    }
+
+    /// 标签输出到文件（追加模式）
+    ///
+    /// 使用 `-W+` 选项为每个标签创建输出文件，追加到已有文件。
+    pub fn tag_out_append(mut self, format: impl Into<String>) -> Self {
+        self.raw_args.push("-W+".to_string());
+        self.raw_args.push(format.into());
+        self
+    }
+
+    /// 标签输出到文件（仅创建新文件）
+    ///
+    /// 使用 `-W!` 选项为每个标签创建输出文件，但不覆盖已有文件。
+    pub fn tag_out_create(mut self, format: impl Into<String>) -> Self {
+        self.raw_args.push("-W!".to_string());
+        self.raw_args.push(format.into());
+        self
+    }
+
+    /// 追加扩展名过滤
+    ///
+    /// 使用 `-ext+` 选项追加文件扩展名过滤。
+    pub fn extension_add(mut self, ext: impl Into<String>) -> Self {
+        self.raw_args.push("-ext+".to_string());
+        self.raw_args.push(ext.into());
+        self
+    }
+
+    /// 文件扩展名过滤
+    ///
+    /// 使用 `-ext` 选项只处理指定扩展名的文件。
+    pub fn extension(mut self, ext: impl Into<String>) -> Self {
+        self.raw_args.push("-ext".to_string());
+        self.raw_args.push(ext.into());
+        self
+    }
+
+    /// 递归处理子目录
+    ///
+    /// 使用 `-r` 选项递归处理目录中的所有文件。
+    pub fn recursive(mut self, yes: bool) -> Self {
+        if yes {
+            self.raw_args.push("-r".to_string());
+        }
+        self
+    }
+
+    /// 递归处理子目录（包含隐藏目录）
+    ///
+    /// 使用 `-r.` 选项递归处理时包含以 `.` 开头的隐藏目录。
+    pub fn recursive_hidden(mut self) -> Self {
+        self.raw_args.push("-r.".to_string());
         self
     }
 
@@ -466,11 +788,10 @@ impl<'et> WriteBuilder<'et> {
         }
 
         // 修复 MakerNotes 偏移
-        if let Some(offset) = self.fix_base {
-            if offset == 0 {
-                args.push("-F".to_string());
-            } else {
-                args.push(format!("-F{}", offset));
+        if self.fix_base_enabled {
+            match self.fix_base_offset {
+                Some(offset) => args.push(format!("-F{}", offset)),
+                None => args.push("-F".to_string()),
             }
         }
 
@@ -640,6 +961,81 @@ mod tests {
 
         assert!(result.is_success());
         assert_eq!(result.updated_count(), Some(1));
+    }
+
+    /// 测试标签写入运算符变体：追加、移除、前置
+    #[test]
+    fn test_tag_write_operators() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        // 测试追加运算符 +=
+        let args = exiftool
+            .write("photo.jpg")
+            .tag_append("Keywords", "landscape")
+            .build_args();
+        assert!(
+            args.iter().any(|a| a == "-Keywords+=landscape"),
+            "参数列表应包含 \"-Keywords+=landscape\"，实际: {:?}",
+            args
+        );
+
+        // 测试移除运算符 -=
+        let args = exiftool
+            .write("photo.jpg")
+            .tag_remove("Keywords", "old")
+            .build_args();
+        assert!(
+            args.iter().any(|a| a == "-Keywords-=old"),
+            "参数列表应包含 \"-Keywords-=old\"，实际: {:?}",
+            args
+        );
+
+        // 测试前置运算符 ^=
+        let args = exiftool
+            .write("photo.jpg")
+            .tag_prepend("Keywords", "important")
+            .build_args();
+        assert!(
+            args.iter().any(|a| a == "-Keywords^=important"),
+            "参数列表应包含 \"-Keywords^=important\"，实际: {:?}",
+            args
+        );
+    }
+
+    /// 测试从文件读取标签值写入
+    #[test]
+    fn test_tag_from_file() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        // 测试从文件读取 <=
+        let args = exiftool
+            .write("photo.jpg")
+            .tag_from_file("ThumbnailImage", "thumb.jpg")
+            .build_args();
+        assert!(
+            args.iter().any(|a| a == "-ThumbnailImage<=thumb.jpg"),
+            "参数列表应包含 \"-ThumbnailImage<=thumb.jpg\"，实际: {:?}",
+            args
+        );
+
+        // 测试追加从文件读取 +<=
+        let args = exiftool
+            .write("photo.jpg")
+            .tag_append_from_file("Comment", "comment.txt")
+            .build_args();
+        assert!(
+            args.iter().any(|a| a == "-Comment+<=comment.txt"),
+            "参数列表应包含 \"-Comment+<=comment.txt\"，实际: {:?}",
+            args
+        );
     }
 
     /// 测试 global_time_shift 方法：验证 -globalTimeShift 参数构建正确

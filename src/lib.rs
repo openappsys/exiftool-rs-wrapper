@@ -131,6 +131,7 @@ pub struct CapabilitySnapshot {
     pub tags_count: usize,
     pub writable_tags_count: usize,
     pub file_extensions_count: usize,
+    pub writable_file_extensions_count: usize,
     pub groups_count: usize,
     pub descriptions_count: usize,
 }
@@ -497,6 +498,29 @@ impl ExifTool {
         Ok(parse_word_list(response.text()))
     }
 
+    /// 获取可写文件类型扩展名列表（对应 `-listwf`）
+    ///
+    /// 返回 ExifTool 支持写入的文件类型扩展名列表。
+    /// 与 `list_file_extensions()` 不同，此方法仅返回可写入元数据的文件类型。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let writable_exts = exiftool.list_writable_file_extensions()?;
+    /// println!("可写文件类型数量: {}", writable_exts.len());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn list_writable_file_extensions(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listwf"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
     /// 生成当前 ExifTool 的能力快照
     pub fn capability_snapshot(&self) -> Result<CapabilitySnapshot> {
         Ok(CapabilitySnapshot {
@@ -504,6 +528,7 @@ impl ExifTool {
             tags_count: self.list_tags()?.len(),
             writable_tags_count: self.list_writable_tags()?.len(),
             file_extensions_count: self.list_file_extensions()?.len(),
+            writable_file_extensions_count: self.list_writable_file_extensions()?.len(),
             groups_count: self.list_groups()?.len(),
             descriptions_count: self.list_descriptions()?.len(),
         })
@@ -780,6 +805,7 @@ pub(crate) mod tests {
         assert!(snapshot.tags_count > 0);
         assert!(snapshot.writable_tags_count > 0);
         assert!(snapshot.file_extensions_count > 0);
+        assert!(snapshot.writable_file_extensions_count > 0);
         assert!(snapshot.groups_count > 0);
         assert!(snapshot.descriptions_count > 0);
     }
