@@ -86,14 +86,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 使用 TagId 常量（类型安全）- 通过 name() 方法获取字符串
-    match exiftool.read_tag::<String, _, _>(&image_path, TagId::MODEL.name()) {
+    match exiftool.read_tag::<String, _, _>(&image_path, TagId::Model.name()) {
         Ok(model) => println!("   📷 相机型号: {}", model),
         Err(e) => println!("   ⚠️  Model 标签: {}", e),
     }
 
     // 读取图像尺寸
-    if let Ok(width) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_WIDTH.name())
-        && let Ok(height) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::IMAGE_HEIGHT.name())
+    if let Ok(width) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::ImageWidth.name())
+        && let Ok(height) = exiftool.read_tag::<i64, _, _>(&image_path, TagId::ImageHeight.name())
     {
         println!("   📐 图像尺寸: {} x {} 像素", width, height);
     }

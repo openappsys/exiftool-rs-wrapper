@@ -349,10 +349,10 @@ mod tests {
         let pattern = RenamePattern::datetime("%Y-%m-%d");
         assert_eq!(pattern.to_exiftool_format(), "%{DateTimeOriginal,%Y-%m-%d}");
 
-        let pattern = RenamePattern::tag(TagId::MAKE);
+        let pattern = RenamePattern::tag(TagId::Make);
         assert_eq!(pattern.to_exiftool_format(), "%{Make}");
 
-        let pattern = RenamePattern::tag_with_suffix(TagId::MODEL, "_photo");
+        let pattern = RenamePattern::tag_with_suffix(TagId::Model, "_photo");
         assert_eq!(pattern.to_exiftool_format(), "%{Model}_photo");
     }
 

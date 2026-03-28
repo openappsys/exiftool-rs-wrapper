@@ -158,7 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cached
     } else {
         let value = exiftool
-            .read_tag::<String, _, _>(test_image, TagId::MAKE.name())
+            .read_tag::<String, _, _>(test_image, TagId::Make.name())
             .unwrap_or_default();
         cache.put(cache_key.clone(), value.clone());
         println!("   📥 缓存未命中，已缓存: {}", value);

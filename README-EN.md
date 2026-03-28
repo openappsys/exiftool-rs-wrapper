@@ -256,8 +256,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
     // Use TagId constants instead of strings
-    let make: String = exiftool.read_tag("photo.jpg", TagId::MAKE)?;
-    let model: String = exiftool.read_tag("photo.jpg", TagId::MODEL)?;
+    let make: String = exiftool.read_tag("photo.jpg", TagId::Make)?;
+    let model: String = exiftool.read_tag("photo.jpg", TagId::Model)?;
     let iso: i64 = exiftool.read_tag("photo.jpg", TagId::ISO)?;
     
     println!("{} {} @ ISO {}", make, model, iso);
@@ -404,7 +404,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     exiftool.rename_by_pattern(
         "photo.jpg",
         RenamePattern::tag_with_suffix(
-            exiftool_rs_wrapper::TagId::MODEL,
+            exiftool_rs_wrapper::TagId::Model,
             "_IMG"
         ),
     )?;

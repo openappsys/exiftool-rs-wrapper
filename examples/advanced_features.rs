@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1.1 查看原始日期
     println!("   📅 原始日期:");
-    match exiftool.read_tag::<String, _, _>(&test_copy, TagId::DATE_TIME_ORIGINAL.name()) {
+    match exiftool.read_tag::<String, _, _>(&test_copy, TagId::DateTimeOriginal.name()) {
         Ok(date) => println!("      DateTimeOriginal: {}", date),
         Err(_) => println!("      DateTimeOriginal: [未设置]"),
     }
@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   ✅ 日期时间偏移成功");
 
             // 验证结果
-            match exiftool.read_tag::<String, _, _>(&test_copy, TagId::DATE_TIME_ORIGINAL.name()) {
+            match exiftool.read_tag::<String, _, _>(&test_copy, TagId::DateTimeOriginal.name()) {
                 Ok(new_date) => println!("      新 DateTimeOriginal: {}", new_date),
                 Err(e) => println!("      ⚠️  读取失败: {}", e),
             }
@@ -78,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   ✅ 日期时间偏移成功");
 
             if let Ok(new_date) =
-                exiftool.read_tag::<String, _, _>(&test_copy, TagId::DATE_TIME_ORIGINAL.name())
+                exiftool.read_tag::<String, _, _>(&test_copy, TagId::DateTimeOriginal.name())
             {
                 println!("      最终 DateTimeOriginal: {}", new_date);
             }
@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 仅偏移 CreateDate，保持 DateTimeOriginal 不变
     match exiftool.shift_specific_datetime(
         &test_copy2,
-        TagId::CREATE_DATE,
+        TagId::CreateDate,
         DateTimeOffset::new().hours(3),
     ) {
         Ok(_) => println!("   ✅ CreateDate 偏移成功 (+3小时)"),
@@ -154,10 +154,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("6️⃣  仅比较特定标签");
 
     let tags_to_compare = vec![
-        TagId::MAKE,
-        TagId::MODEL,
-        TagId::DATE_TIME_ORIGINAL,
-        TagId::COPYRIGHT,
+        TagId::Make,
+        TagId::Model,
+        TagId::DateTimeOriginal,
+        TagId::Copyright,
     ];
 
     match exiftool.diff_tags(&image_path, &test_copy, &tags_to_compare) {
@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 7.2 特定标签的十六进制值
     println!("\n   🏷️  Make 标签的十六进制值:");
-    match exiftool.hex_dump_tag(&image_path, TagId::MAKE) {
+    match exiftool.hex_dump_tag(&image_path, TagId::Make) {
         Ok(hex) => {
             if hex.trim().is_empty() {
                 println!("      [标签不存在或没有二进制数据]");
@@ -243,13 +243,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         Ok(_) => {
             // 追加字符串
-            match exiftool.append_string(&test_copy3, TagId::COPYRIGHT, " Example Company") {
+            match exiftool.append_string(&test_copy3, TagId::Copyright, " Example Company") {
                 Ok(_) => {
                     println!("   ✅ 字符串追加成功");
 
                     // 验证
                     if let Ok(value) =
-                        exiftool.read_tag::<String, _, _>(&test_copy3, TagId::COPYRIGHT.name())
+                        exiftool.read_tag::<String, _, _>(&test_copy3, TagId::Copyright.name())
                     {
                         println!("      最终值: {}", value)
                     }

@@ -89,15 +89,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tasks = vec![
         (
             "Make",
-            exiftool.read_tag::<String, _, _>(first_image, TagId::MAKE),
+            exiftool.read_tag::<String, _, _>(first_image, TagId::Make),
         ),
         (
             "Model",
-            exiftool.read_tag::<String, _, _>(first_image, TagId::MODEL),
+            exiftool.read_tag::<String, _, _>(first_image, TagId::Model),
         ),
         (
             "DateTimeOriginal",
-            exiftool.read_tag::<String, _, _>(first_image, TagId::DATE_TIME_ORIGINAL),
+            exiftool.read_tag::<String, _, _>(first_image, TagId::DateTimeOriginal),
         ),
     ];
 

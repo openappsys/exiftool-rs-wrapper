@@ -85,12 +85,12 @@ impl GeoOperations for ExifTool {
     fn get_gps<P: AsRef<Path>>(&self, path: P) -> Result<Option<GpsCoordinate>> {
         let metadata = self
             .query(path)
-            .tag(TagId::GPS_LATITUDE.name())
-            .tag(TagId::GPS_LONGITUDE.name())
+            .tag(TagId::GpsLatitude.name())
+            .tag(TagId::GpsLongitude.name())
             .execute()?;
 
-        let lat_val = metadata.get(TagId::GPS_LATITUDE.name());
-        let lon_val = metadata.get(TagId::GPS_LONGITUDE.name());
+        let lat_val = metadata.get(TagId::GpsLatitude.name());
+        let lon_val = metadata.get(TagId::GpsLongitude.name());
 
         if let (Some(lat), Some(lon)) = (lat_val, lon_val) {
             let lat_str = lat.to_string_lossy();
@@ -115,11 +115,11 @@ impl GeoOperations for ExifTool {
         let mut write = self.write(path);
 
         write = write
-            .tag(TagId::GPS_LATITUDE.name(), &lat)
-            .tag(TagId::GPS_LONGITUDE.name(), &lon);
+            .tag(TagId::GpsLatitude.name(), &lat)
+            .tag(TagId::GpsLongitude.name(), &lon);
 
         if let Some(altitude) = alt {
-            write = write.tag(TagId::GPS_ALTITUDE.name(), altitude);
+            write = write.tag(TagId::GpsAltitude.name(), altitude);
         }
 
         write.overwrite_original(true).execute()?;
@@ -130,9 +130,9 @@ impl GeoOperations for ExifTool {
     fn remove_gps<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         // 删除所有 GPS 相关标签
         self.write(path)
-            .delete(TagId::GPS_LATITUDE.name())
-            .delete(TagId::GPS_LONGITUDE.name())
-            .delete(TagId::GPS_ALTITUDE.name())
+            .delete(TagId::GpsLatitude.name())
+            .delete(TagId::GpsLongitude.name())
+            .delete(TagId::GpsAltitude.name())
             .overwrite_original(true)
             .execute()?;
 
