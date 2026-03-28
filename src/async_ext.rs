@@ -288,6 +288,228 @@ impl AsyncExifTool {
         let exiftool = Arc::clone(&self.inner);
         run_blocking(move || exiftool.capability_snapshot()).await
     }
+
+    // ── 补齐缺失的异步方法 ──
+
+    /// 异步获取标签列表（`-list`）
+    pub async fn list_tags(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_tags()).await
+    }
+
+    /// 异步获取可读文件扩展名列表（`-listr`）
+    pub async fn list_readable_file_extensions(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_readable_file_extensions()).await
+    }
+
+    /// 异步获取支持的 GPS 日志格式（`-listgeo`）
+    pub async fn list_geo_formats(&self) -> Result<Vec<String>> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || exiftool.list_geo_formats()).await
+    }
+
+    /// 异步删除备份文件
+    ///
+    /// 使用 `-delete_original` 选项删除 `_original` 备份文件。
+    pub async fn delete_original<P: AsRef<Path> + Send>(&self, path: P, force: bool) -> Result<()> {
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.delete_original(&path, force)).await
+    }
+
+    /// 异步从备份恢复原始文件
+    ///
+    /// 使用 `-restore_original` 选项从 `_original` 备份文件恢复原始文件。
+    pub async fn restore_original<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.restore_original(&path)).await
+    }
+
+    /// 异步执行原始命令
+    ///
+    /// 高级 API，允许直接发送参数到 ExifTool。
+    pub async fn execute(&self, args: Vec<String>) -> Result<crate::process::Response> {
+        let exiftool = Arc::clone(&self.inner);
+        run_blocking(move || {
+            let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            exiftool.execute(&str_args)
+        })
+        .await
+    }
+
+    /// 异步读取文件元数据并反序列化为结构体
+    pub async fn read_struct<T, P>(&self, path: P) -> Result<T>
+    where
+        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        P: AsRef<Path> + Send,
+    {
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.read_struct(&path)).await
+    }
+
+    // ── 扩展 trait 异步包装 ──
+
+    /// 异步偏移日期时间标签
+    pub async fn shift_datetime<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        offset: crate::advanced::DateTimeOffset,
+    ) -> Result<()> {
+        use crate::advanced::AdvancedWriteOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.shift_datetime(&path, offset)).await
+    }
+
+    /// 异步读取二进制数据
+    pub async fn read_binary<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        tag: crate::binary::BinaryTag,
+    ) -> Result<Vec<u8>> {
+        use crate::binary::BinaryOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.read_binary(&path, tag)).await
+    }
+
+    /// 异步提取缩略图到文件
+    pub async fn extract_thumbnail<P: AsRef<Path> + Send, Q: AsRef<Path> + Send>(
+        &self,
+        source: P,
+        dest: Q,
+    ) -> Result<()> {
+        use crate::binary::BinaryOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let source = source.as_ref().to_path_buf();
+        let dest = dest.as_ref().to_path_buf();
+        run_blocking(move || exiftool.extract_thumbnail(&source, &dest)).await
+    }
+
+    /// 异步比较两个文件的元数据
+    pub async fn diff<P: AsRef<Path> + Send, Q: AsRef<Path> + Send>(
+        &self,
+        source: P,
+        target: Q,
+    ) -> Result<crate::config::DiffResult> {
+        use crate::config::ConfigOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let source = source.as_ref().to_path_buf();
+        let target = target.as_ref().to_path_buf();
+        run_blocking(move || exiftool.diff(&source, &target)).await
+    }
+
+    /// 异步获取十六进制转储
+    pub async fn hex_dump<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        options: crate::config::HexDumpOptions,
+    ) -> Result<String> {
+        use crate::config::HexDumpOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.hex_dump(&path, &options)).await
+    }
+
+    /// 异步获取详细输出
+    pub async fn verbose_dump<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        options: crate::config::VerboseOptions,
+    ) -> Result<String> {
+        use crate::config::VerboseOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.verbose_dump(&path, &options)).await
+    }
+
+    /// 异步重命名文件
+    pub async fn rename_file<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        pattern: crate::file_ops::RenamePattern,
+    ) -> Result<std::path::PathBuf> {
+        use crate::file_ops::FileOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.rename_file(&path, &pattern)).await
+    }
+
+    /// 异步按日期组织文件到目录
+    pub async fn organize_by_date<P: AsRef<Path> + Send, Q: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        target_dir: Q,
+        date_format: String,
+    ) -> Result<std::path::PathBuf> {
+        use crate::file_ops::FileOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        let target_dir = target_dir.as_ref().to_path_buf();
+        run_blocking(move || exiftool.organize_by_date(&path, &target_dir, &date_format)).await
+    }
+
+    /// 异步使用自定义格式读取元数据
+    pub async fn read_formatted<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        options: crate::format::ReadOptions,
+    ) -> Result<crate::format::FormattedOutput> {
+        use crate::format::FormatOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.read_formatted(&path, &options)).await
+    }
+
+    /// 异步读取为 XML 格式
+    pub async fn read_xml<P: AsRef<Path> + Send>(&self, path: P) -> Result<String> {
+        use crate::format::FormatOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.read_xml(&path)).await
+    }
+
+    /// 异步读取为 CSV 格式
+    pub async fn read_csv<P: AsRef<Path> + Send>(&self, path: P) -> Result<String> {
+        use crate::format::FormatOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.read_csv(&path)).await
+    }
+
+    /// 异步获取 GPS 坐标
+    pub async fn get_gps<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+    ) -> Result<Option<crate::geo::GpsCoordinate>> {
+        use crate::geo::GeoOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.get_gps(&path)).await
+    }
+
+    /// 异步设置 GPS 坐标
+    pub async fn set_gps<P: AsRef<Path> + Send>(
+        &self,
+        path: P,
+        coord: crate::geo::GpsCoordinate,
+    ) -> Result<()> {
+        use crate::geo::GeoOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.set_gps(&path, &coord)).await
+    }
+
+    /// 异步删除 GPS 信息
+    pub async fn remove_gps<P: AsRef<Path> + Send>(&self, path: P) -> Result<()> {
+        use crate::geo::GeoOperations;
+        let exiftool = Arc::clone(&self.inner);
+        let path = path.as_ref().to_path_buf();
+        run_blocking(move || exiftool.remove_gps(&path)).await
+    }
 }
 
 /// 异步批量处理辅助函数

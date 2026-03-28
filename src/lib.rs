@@ -521,6 +521,50 @@ impl ExifTool {
         Ok(parse_word_list(response.text()))
     }
 
+    /// 获取可读文件类型扩展名列表（对应 `-listr`）
+    ///
+    /// 返回 ExifTool 支持读取的文件类型扩展名列表。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let readable_exts = exiftool.list_readable_file_extensions()?;
+    /// println!("可读文件类型数量: {}", readable_exts.len());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn list_readable_file_extensions(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listr"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
+    /// 获取支持的 GPS 日志格式列表（对应 `-listgeo`）
+    ///
+    /// 返回 ExifTool 支持的地理标记日志文件格式列表。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let geo_formats = exiftool.list_geo_formats()?;
+    /// println!("支持的 GPS 日志格式: {:?}", geo_formats);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn list_geo_formats(&self) -> Result<Vec<String>> {
+        let response = self.execute(&["-listgeo"])?;
+        Ok(parse_word_list(response.text()))
+    }
+
     /// 生成当前 ExifTool 的能力快照
     pub fn capability_snapshot(&self) -> Result<CapabilitySnapshot> {
         Ok(CapabilitySnapshot {

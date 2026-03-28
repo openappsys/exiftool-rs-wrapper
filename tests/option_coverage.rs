@@ -263,23 +263,31 @@ fn typed_option_set() -> HashSet<&'static str> {
         // 格式操作
         "-csv", // FormatOperations::read_csv / OutputFormat::Csv
         // 参数变体支持
-        "-csv=FILE",   // QueryBuilder::csv_import / WriteBuilder::csv_import
-        "-csv+=FILE",  // QueryBuilder::csv_append / WriteBuilder::csv_append
-        "-efile!",     // efile_variant(_, None, true)
-        "-efile2",     // efile_variant(_, Some(2), false)
-        "-efile2!",    // efile_variant(_, Some(2), true)
-        "-ext+",       // extension_add
-        "-fileOrder2", // file_order_secondary
-        "-htmlDump0",  // html_dump_offset
-        "-if2",        // condition_num(2, ...)
-        "-if3",        // condition_num(3, ...)
-        "-j=FILE",     // QueryBuilder::json_import / WriteBuilder::json_import
-        "-j+=FILE",    // QueryBuilder::json_append / WriteBuilder::json_append
-        "-p-",         // print_format_no_newline
-        "-w+",         // text_out_append
-        "-w!",         // text_out_create
-        "-W+",         // tag_out_append
-        "-W!",         // tag_out_create
+        "-api OPT^=",      // api_option_empty
+        "-csv=FILE",       // QueryBuilder::csv_import / WriteBuilder::csv_import
+        "-csv+=FILE",      // QueryBuilder::csv_append / WriteBuilder::csv_append
+        "-DSTTAG<SRCTAG",  // copy_from_with_redirect
+        "-+DSTTAG<SRCTAG", // copy_from_with_append
+        "-efile!",         // efile_variant(_, None, true)
+        "-efile2",         // efile_variant(_, Some(2), false)
+        "-efile2!",        // efile_variant(_, Some(2), true)
+        "-ext+",           // extension_add
+        "-fileOrder2",     // file_order_secondary
+        "-g0:1",           // group_headings_multi
+        "-G0:1",           // group_names_multi
+        "-htmlDump0",      // html_dump_offset
+        "-if2",            // condition_num(2, ...)
+        "-if3",            // condition_num(3, ...)
+        "-j=FILE",         // QueryBuilder::json_import / WriteBuilder::json_import
+        "-j+=FILE",        // QueryBuilder::json_append / WriteBuilder::json_append
+        "-listgeo",        // ExifTool::list_geo_formats
+        "-listr",          // ExifTool::list_readable_file_extensions
+        "-p-",             // print_format_no_newline
+        "-userParam P^=",  // user_param_empty
+        "-w+",             // text_out_append
+        "-w!",             // text_out_create
+        "-W+",             // tag_out_append
+        "-W!",             // tag_out_create
     ]
     .into_iter()
     .collect()
@@ -289,6 +297,7 @@ fn catalog_options() -> Vec<&'static str> {
     vec![
         "-a",
         "-api",
+        "-api OPT^=",
         "-args",
         "-@",
         "-b",
@@ -305,6 +314,8 @@ fn catalog_options() -> Vec<&'static str> {
         "-delete_original",
         "-delete_original!",
         "-diff",
+        "-DSTTAG<SRCTAG",
+        "-+DSTTAG<SRCTAG",
         "-e",
         "-E",
         "-ec",
@@ -327,7 +338,9 @@ fn catalog_options() -> Vec<&'static str> {
         "-fileOrder",
         "-fileOrder2",
         "-G",
+        "-G0:1",
         "-g",
+        "-g0:1",
         "-geotag",
         "-globalTimeShift",
         "-h",
@@ -350,8 +363,10 @@ fn catalog_options() -> Vec<&'static str> {
         "-listd",
         "-listf",
         "-listg",
+        "-listgeo",
         "-listItem",
         "-list_dir",
+        "-listr",
         "-listw",
         "-listwf",
         "-listx",
@@ -391,6 +406,7 @@ fn catalog_options() -> Vec<&'static str> {
         "-U",
         "-use",
         "-userParam",
+        "-userParam P^=",
         "-v",
         "-ver",
         "-w",
@@ -524,7 +540,8 @@ fn test_auto_extract_options_from_help() {
 
 fn option_semantics(option: &str) -> (String, String, String) {
     match option {
-        "-list" | "-listw" | "-listwf" | "-listf" | "-listx" | "-listg" | "-listd" | "-ver" => (
+        "-list" | "-listw" | "-listwf" | "-listr" | "-listf" | "-listx" | "-listg" | "-listgeo"
+        | "-listd" | "-ver" => (
             "无文件输入，纯探测选项".to_string(),
             "文本输出，可解析为能力信息".to_string(),
             "命令失败时返回 ExifTool 错误".to_string(),

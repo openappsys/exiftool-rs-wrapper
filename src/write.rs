@@ -563,6 +563,92 @@ impl<'et> WriteBuilder<'et> {
         self
     }
 
+    /// 从文件复制标签（带重定向映射）
+    ///
+    /// 使用 `-tagsFromFile SRCFILE` 配合 `-DSTTAG<SRCTAG` 重定向语法。
+    /// 可以指定源标签到目标标签的映射关系。
+    ///
+    /// # 参数
+    ///
+    /// - `source` - 源文件路径
+    /// - `redirects` - 标签重定向列表，每项为 `(目标标签, 源标签)`。
+    ///   生成 `-DSTTAG<SRCTAG` 参数。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从源文件复制 Artist 到 Author，DateTimeOriginal 到 CreateDate
+    /// exiftool.write("target.jpg")
+    ///     .copy_from_with_redirect("source.jpg", &[
+    ///         ("Author", "Artist"),
+    ///         ("CreateDate", "DateTimeOriginal"),
+    ///     ])
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn copy_from_with_redirect<P: AsRef<Path>>(
+        mut self,
+        source: P,
+        redirects: &[(&str, &str)],
+    ) -> Self {
+        self.raw_args.push("-tagsFromFile".to_string());
+        self.raw_args
+            .push(source.as_ref().to_string_lossy().to_string());
+        for (dst, src) in redirects {
+            self.raw_args.push(format!("-{}<{}", dst, src));
+        }
+        self
+    }
+
+    /// 从文件复制标签（带追加重定向）
+    ///
+    /// 使用 `-+DSTTAG<SRCTAG` 追加方式复制标签。
+    ///
+    /// # 参数
+    ///
+    /// - `source` - 源文件路径
+    /// - `redirects` - 标签重定向列表，每项为 `(目标标签, 源标签)`。
+    ///   生成 `-+DSTTAG<SRCTAG` 参数。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从源文件追加 Keywords
+    /// exiftool.write("target.jpg")
+    ///     .copy_from_with_append("source.jpg", &[
+    ///         ("Keywords", "Keywords"),
+    ///     ])
+    ///     .overwrite_original(true)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn copy_from_with_append<P: AsRef<Path>>(
+        mut self,
+        source: P,
+        redirects: &[(&str, &str)],
+    ) -> Self {
+        self.raw_args.push("-tagsFromFile".to_string());
+        self.raw_args
+            .push(source.as_ref().to_string_lossy().to_string());
+        for (dst, src) in redirects {
+            self.raw_args.push(format!("-+{}<{}", dst, src));
+        }
+        self
+    }
+
     /// 条件过滤（带编号）
     ///
     /// 使用 `-ifNUM` 选项设置条件过滤。

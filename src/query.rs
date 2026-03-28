@@ -726,6 +726,36 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 按多个组级别分类输出
+    ///
+    /// 使用 `-gNUM:NUM:...` 选项按多个组级别分类显示标签。
+    /// 例如 `group_headings_multi(&[0, 1])` 生成 `-g0:1`。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 按多组级别分类显示（-g0:1:2）
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .group_headings_multi(&[0, 1, 2])
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn group_headings_multi(mut self, groups: &[u8]) -> Self {
+        if groups.is_empty() {
+            self.args.push("-g".to_string());
+        } else {
+            let nums: Vec<String> = groups.iter().map(|n| n.to_string()).collect();
+            self.args.push(format!("-g{}", nums.join(":")));
+        }
+        self
+    }
+
     /// 短输出格式
     ///
     /// 使用 `-s` 选项以短格式输出标签名。
@@ -984,6 +1014,40 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 设置 API 选项（使用 `^=` 赋值语义）
+    ///
+    /// 使用 `-api OPT^=VAL` 设置 API 选项。
+    /// 与 `=` 赋值的区别：省略值时 `=` 设为 undef，`^=` 设为空字符串。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 设置 API 选项为空字符串（-api OPT^=）
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .api_option_empty("LargeFileSupport", None::<&str>)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn api_option_empty(
+        mut self,
+        opt: impl Into<String>,
+        value: Option<impl Into<String>>,
+    ) -> Self {
+        let option = opt.into();
+        self.args.push("-api".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}^={}", option, v.into())),
+            None => self.args.push(format!("{}^=", option)),
+        }
+        self
+    }
+
     /// 设置用户参数
     ///
     /// 使用 `-userParam` 选项设置用户参数，可在配置文件中使用
@@ -1013,6 +1077,40 @@ impl<'et> QueryBuilder<'et> {
         match value {
             Some(v) => self.args.push(format!("{}={}", param, v.into())),
             None => self.args.push(param),
+        }
+        self
+    }
+
+    /// 设置用户参数（使用 `^=` 赋值语义）
+    ///
+    /// 使用 `-userParam PARAM^=VAL` 设置用户参数。
+    /// 与 `=` 赋值的区别：省略值时 `=` 设为 undef，`^=` 设为空字符串。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 设置用户参数为空字符串
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .user_param_empty("MyParam", None::<&str>)
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn user_param_empty(
+        mut self,
+        param: impl Into<String>,
+        value: Option<impl Into<String>>,
+    ) -> Self {
+        let param = param.into();
+        self.args.push("-userParam".to_string());
+        match value {
+            Some(v) => self.args.push(format!("{}^={}", param, v.into())),
+            None => self.args.push(format!("{}^=", param)),
         }
         self
     }
@@ -1142,9 +1240,40 @@ impl<'et> QueryBuilder<'et> {
 
     /// 打印组名
     ///
-    /// 使用 `-G` 选项打印每个标签的组名
+    /// 使用 `-G` 选项打印每个标签的组名。
+    /// 单个级别参数，生成 `-G` 或 `-GN`。
     pub fn group_names(mut self, level: Option<u8>) -> Self {
         self.group_names = level;
+        self
+    }
+
+    /// 打印多个组级别的组名
+    ///
+    /// 使用 `-GNUM:NUM:...` 选项打印多组级别的组名。
+    /// 例如 `group_names_multi(&[0, 1])` 生成 `-G0:1`。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 按多组级别打印组名（-G0:1:2）
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .group_names_multi(&[0, 1, 2])
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn group_names_multi(mut self, groups: &[u8]) -> Self {
+        if groups.is_empty() {
+            self.args.push("-G".to_string());
+        } else {
+            let nums: Vec<String> = groups.iter().map(|n| n.to_string()).collect();
+            self.args.push(format!("-G{}", nums.join(":")));
+        }
         self
     }
 
