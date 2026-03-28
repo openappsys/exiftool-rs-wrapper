@@ -20,8 +20,6 @@ pub struct StreamOptions {
     pub buffer_size: usize,
     /// 进度回调
     pub progress_callback: Option<ProgressCallback>,
-    /// 超时（秒）
-    pub timeout: Option<u64>,
 }
 
 impl fmt::Debug for StreamOptions {
@@ -29,7 +27,6 @@ impl fmt::Debug for StreamOptions {
         f.debug_struct("StreamOptions")
             .field("buffer_size", &self.buffer_size)
             .field("has_callback", &self.progress_callback.is_some())
-            .field("timeout", &self.timeout)
             .finish()
     }
 }
@@ -39,7 +36,6 @@ impl Default for StreamOptions {
         Self {
             buffer_size: 64 * 1024, // 64KB 默认缓冲区
             progress_callback: None,
-            timeout: None,
         }
     }
 }
@@ -62,12 +58,6 @@ impl StreamOptions {
         F: Fn(usize, usize) -> bool + Send + Sync + 'static,
     {
         self.progress_callback = Some(Arc::new(callback));
-        self
-    }
-
-    /// 设置超时
-    pub fn timeout(mut self, seconds: u64) -> Self {
-        self.timeout = Some(seconds);
         self
     }
 }

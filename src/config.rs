@@ -146,41 +146,24 @@ fn compare_metadata(
 }
 
 /// 十六进制转储选项
+///
+/// 对应 ExifTool 的 `-htmlDump[OFFSET]` 选项。
+/// ExifTool 原生仅支持起始偏移量，不支持长度限制或每行字节数控制。
 #[derive(Debug, Clone, Default)]
 pub struct HexDumpOptions {
-    /// 起始偏移
+    /// 起始偏移量（对应 `-htmlDumpOFFSET`）
     pub start_offset: Option<usize>,
-    /// 长度限制
-    pub length: Option<usize>,
-    /// 每行字节数
-    pub bytes_per_line: usize,
 }
 
 impl HexDumpOptions {
     /// 创建新的选项
     pub fn new() -> Self {
-        Self {
-            start_offset: None,
-            length: None,
-            bytes_per_line: 16,
-        }
+        Self::default()
     }
 
     /// 设置起始偏移
     pub fn start(mut self, offset: usize) -> Self {
         self.start_offset = Some(offset);
-        self
-    }
-
-    /// 设置长度
-    pub fn length(mut self, len: usize) -> Self {
-        self.length = Some(len);
-        self
-    }
-
-    /// 设置每行字节数
-    pub fn bytes_per_line(mut self, n: usize) -> Self {
-        self.bytes_per_line = n;
         self
     }
 }
@@ -202,12 +185,6 @@ impl HexDumpOperations for ExifTool {
             args.push(format!("-htmlDump{}", offset));
         } else {
             args.push("-htmlDump".to_string());
-        }
-
-        if options.length.is_some() {
-            return Err(crate::error::Error::invalid_arg(
-                "hex_dump 的 length 选项当前不受 ExifTool 原生命令直接支持",
-            ));
         }
 
         args.push(path.as_ref().to_string_lossy().to_string());
@@ -316,14 +293,9 @@ mod tests {
 
     #[test]
     fn test_hex_dump_options() {
-        let opts = HexDumpOptions::new()
-            .start(100)
-            .length(256)
-            .bytes_per_line(32);
+        let opts = HexDumpOptions::new().start(100);
 
         assert_eq!(opts.start_offset, Some(100));
-        assert_eq!(opts.length, Some(256));
-        assert_eq!(opts.bytes_per_line, 32);
     }
 
     #[test]

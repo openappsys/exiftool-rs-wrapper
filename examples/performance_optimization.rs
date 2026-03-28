@@ -260,12 +260,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_progress(|processed, total| {
             println!("   📊 流式进度: {}/{} bytes", processed, total);
             true // 继续处理
-        })
-        .timeout(30); // 30 秒超时
+        });
 
     println!("   📋 流式处理配置:");
     println!("      缓冲区大小: {} bytes", stream_opts.buffer_size);
-    println!("      超时: {} 秒", stream_opts.timeout.unwrap_or(0));
     println!(
         "      有进度回调: {}\n",
         stream_opts.progress_callback.is_some()

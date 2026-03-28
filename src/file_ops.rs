@@ -147,14 +147,21 @@ impl FileOperations for ExifTool {
     fn rename_file<P: AsRef<Path>>(&self, path: P, pattern: &RenamePattern) -> Result<PathBuf> {
         let format = pattern.to_exiftool_format();
         let parent = path.as_ref().parent().unwrap_or(Path::new("."));
+        let original_name = path
+            .as_ref()
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
 
-        // 先用 -p 参数预览 ExifTool 按模式解析后的实际文件名
-        let preview_format = format.clone();
-        let preview_args = vec![
-            format!("-p {}", preview_format),
-            path.as_ref().to_string_lossy().to_string(),
-        ];
-        let preview_response = self.execute_raw(&preview_args);
+        // 记录重命名前目录下的所有文件，用于后续对比
+        let files_before: std::collections::HashSet<String> = parent
+            .read_dir()
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
 
         // 执行重命名操作
         let result = self
@@ -162,33 +169,40 @@ impl FileOperations for ExifTool {
             .arg(format!("-FileName<{}", format))
             .execute()?;
 
-        // 尝试从 ExifTool 输出中解析实际新文件名
-        // ExifTool 重命名输出格式类似：`'old.jpg' --> 'new.jpg'`
+        // 策略 1：解析 ExifTool 输出中的 'old.jpg' --> 'new.jpg' 格式
         for line in &result.lines {
             if let Some(new_name) = parse_rename_output(line) {
                 return Ok(parent.join(new_name));
             }
         }
 
-        // 如果输出解析失败，尝试使用 -p 预览结果构建路径
-        if let Ok(response) = preview_response {
-            let preview_name = response.text().trim().to_string();
-            if !preview_name.is_empty() {
-                // 保留原文件扩展名（如果模式中没有指定）
-                let new_name = if let Some(ext) = path
-                    .as_ref()
-                    .extension()
-                    .filter(|_| !preview_name.contains('.'))
-                {
-                    format!("{}.{}", preview_name, ext.to_string_lossy())
-                } else {
-                    preview_name
-                };
-                return Ok(parent.join(new_name));
+        // 策略 2：对比目录文件列表，找到新增的文件
+        // 原文件已被重命名（消失），新文件出现
+        if let Ok(entries) = parent.read_dir() {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let name = entry.file_name().to_string_lossy().to_string();
+                // 跳过原来就存在的文件（除了原文件名本身，因为它可能已经被重命名了）
+                if files_before.contains(&name) {
+                    // 如果这个名字不是原文件名，说明它之前就存在，跳过
+                    if original_name.as_deref() != Some(&name) {
+                        continue;
+                    }
+                    // 如果这个名字就是原文件名，说明没有被重命名（相同名字），也跳过
+                    continue;
+                }
+                // 找到新增的文件
+                return Ok(parent.join(name));
             }
         }
 
-        // 最后兜底：返回原路径并附带警告信息
+        // 策略 3：如果原文件不存在了，说明重命名成功但无法确定新名称
+        if !path.as_ref().exists() {
+            return Err(crate::error::Error::parse(
+                "ExifTool 重命名成功但无法确定新文件路径",
+            ));
+        }
+
+        // 原文件仍然存在，说明重命名可能失败
         Err(crate::error::Error::parse(
             "无法确定 ExifTool 重命名后的文件路径，请检查 ExifTool 输出",
         ))

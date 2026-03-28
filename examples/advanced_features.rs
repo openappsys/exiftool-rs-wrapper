@@ -176,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   显示文件头部或特定标签的二进制数据\n");
 
     // 7.1 文件头部转储
-    let hex_opts = HexDumpOptions::new().length(64).bytes_per_line(16);
+    let hex_opts = HexDumpOptions::new();
 
     match exiftool.hex_dump(&image_path, &hex_opts) {
         Ok(hex) => {
