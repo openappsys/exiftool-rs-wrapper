@@ -495,6 +495,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 3. **选择性查询**：只查询需要的标签，避免读取完整元数据
 4. **启用缓存**：对于重复查询，使用内置 LRU 缓存
 
+## 性能最佳实践
+
+### 何时使用 Builder，何时使用流式 API
+
+| 场景 | 推荐 API | 原因 |
+|------|---------|------|
+| 单文件查询 | `query()` | spawn_blocking 开销可忽略，代码简洁 |
+| 批量处理（<10 文件）| `query()` + 循环 | 代码简单，足够高效 |
+| 批量处理（>10 文件）| `stream_batch()` | 避免频繁的 spawn_blocking 调度 |
+| 大文件（视频等）| `stream_large_file()` | 支持进度跟踪，快速模式 |
+| 需要进度反馈 | `stream_query()` | 实时事件流，可取消 |
+
+### 常见陷阱
+
+❌ **不要在循环中连续创建 Builder**（会导致大量 spawn_blocking 调度）：
+
+```rust
+// 糟糕：1000 次 spawn_blocking 调度
+for file in &files {
+    let meta = exiftool.query(file).await?; // 每次都要调度
+}
+```
+
+✅ **使用流式 API**（受控并发）：
+
+```rust
+// 好：自动批处理，性能更优
+let (mut rx, _) = exiftool.stream_batch(&files).await?;
+while let Some((path, result)) = rx.recv().await {
+    match result {
+        Ok(meta) => println!("✓ {:?}: {} tags", path, meta.len()),
+        Err(e) => println!("✗ {:?}: {}", path, e),
+    }
+}
+```
+
+### 异步架构说明
+
+本库的异步 API 使用 `spawn_blocking` 执行同步调用，原因：
+
+1. **Builder 操作极轻量**：只是构建参数数组（微秒级），`spawn_blocking` 开销可忽略
+2. **真实瓶颈在进程通信**：ExifTool 的实际工作在子进程中，已异步执行
+3. **流式 API 提供真正异步**：大文件/批量场景请使用 `stream_query()` / `stream_batch()`
+
+完整示例代码见 `examples/async_performance.rs`。
+
 ## 命令行工具
 
 本项目还提供了一个命令行工具：
