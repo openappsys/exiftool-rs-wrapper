@@ -569,6 +569,52 @@ let rare_tag: String = exiftool.read_tag("photo.jpg", "SomeRareTag")?;
 3. **Selective Queries**: Only query needed tags, avoid reading full metadata
 4. **Enable Caching**: Use built-in LRU cache for repeated queries
 
+## Performance Best Practices
+
+### When to Use Builder vs Streaming API
+
+| Scenario | Recommended API | Reason |
+|----------|----------------|--------|
+| Single file query | `query()` | spawn_blocking overhead negligible, concise code |
+| Batch processing (<10 files) | `query()` + loop | Simple code, efficient enough |
+| Batch processing (>10 files) | `stream_batch()` | Avoid frequent spawn_blocking scheduling |
+| Large files (videos, etc.) | `stream_large_file()` | Progress tracking, fast mode |
+| Progress feedback needed | `stream_query()` | Real-time event stream, cancellable |
+
+### Common Pitfalls
+
+❌ **Don't create Builders in loops** (causes excessive spawn_blocking scheduling):
+
+```rust
+// Bad: 1000 spawn_blocking schedulings
+for file in &files {
+    let meta = exiftool.query(file).await?; // schedule every time
+}
+```
+
+✅ **Use streaming API** (controlled concurrency):
+
+```rust
+// Good: automatic batch processing, better performance
+let (mut rx, _) = exiftool.stream_batch(&files).await?;
+while let Some((path, result)) = rx.recv().await {
+    match result {
+        Ok(meta) => println!("✓ {:?}: {} tags", path, meta.len()),
+        Err(e) => println!("✗ {:?}: {}", path, e),
+    }
+}
+```
+
+### Async Architecture Explanation
+
+This library's async API uses `spawn_blocking` for sync calls because:
+
+1. **Builder operations are extremely lightweight**: Just building argument arrays (microseconds), `spawn_blocking` overhead negligible
+2. **Real bottleneck is process communication**: ExifTool's actual work happens in subprocess, already async
+3. **Streaming API provides true async**: For large files/batch scenarios use `stream_query()` / `stream_batch()`
+
+See `examples/async_performance.rs` for complete examples.
+
 ## Command Line Tool
 
 This project also provides a command-line tool:
