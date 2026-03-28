@@ -246,7 +246,7 @@ jobs:
           key: ${{ runner.os }}-compat-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: 编译测试
-        run: cargo build --tests --all-features
+        run: cargo test --no-run --all-features
 
       - name: 运行兼容性报告测试
         run: |

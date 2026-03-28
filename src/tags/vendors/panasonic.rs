@@ -2,11 +2,11 @@
 
 use crate::TagId;
 
-pub const PANASONIC_A_F_AREA_MODE: TagId = TagId("AFAreaMode");
-pub const PANASONIC_A_F_AREA_SIZE: TagId = TagId("AFAreaSize");
-pub const PANASONIC_A_F_ASSIST_LAMP: TagId = TagId("AFAssistLamp");
-pub const PANASONIC_A_F_POINT_POSITION: TagId = TagId("AFPointPosition");
-pub const PANASONIC_A_F_SUBJECT_DETECTION: TagId = TagId("AFSubjectDetection");
+pub const PANASONIC_AF_AREA_MODE: TagId = TagId("AFAreaMode");
+pub const PANASONIC_AF_AREA_SIZE: TagId = TagId("AFAreaSize");
+pub const PANASONIC_AF_ASSIST_LAMP: TagId = TagId("AFAssistLamp");
+pub const PANASONIC_AF_POINT_POSITION: TagId = TagId("AFPointPosition");
+pub const PANASONIC_AF_SUBJECT_DETECTION: TagId = TagId("AFSubjectDetection");
 pub const PANASONIC_ACCELEROMETER_X: TagId = TagId("AccelerometerX");
 pub const PANASONIC_ACCELEROMETER_Y: TagId = TagId("AccelerometerY");
 pub const PANASONIC_ACCELEROMETER_Z: TagId = TagId("AccelerometerZ");
@@ -40,7 +40,7 @@ pub const PANASONIC_FLASH_CURTAIN: TagId = TagId("FlashCurtain");
 pub const PANASONIC_FLASH_WARNING: TagId = TagId("FlashWarning");
 pub const PANASONIC_FOCUS_BRACKET: TagId = TagId("FocusBracket");
 pub const PANASONIC_GAIN: TagId = TagId("Gain");
-pub const PANASONIC_H_D_R: TagId = TagId("HDR");
+pub const PANASONIC_HDR: TagId = TagId("HDR");
 pub const PANASONIC_HIGHLIGHT_SHADOW: TagId = TagId("HighlightShadow");
 pub const PANASONIC_HIGHLIGHT_WARNING: TagId = TagId("HighlightWarning");
 pub const PANASONIC_HYBRID_LOG_GAMMA: TagId = TagId("HybridLogGamma");
@@ -48,7 +48,7 @@ pub const PANASONIC_INTELLIGENT_EXPOSURE: TagId = TagId("IntelligentExposure");
 pub const PANASONIC_INTELLIGENT_RESOLUTION: TagId = TagId("IntelligentResolution");
 pub const PANASONIC_INTERNAL_N_D_FILTER: TagId = TagId("InternalNDFilter");
 pub const PANASONIC_INTERNAL_SERIAL_NUMBER: TagId = TagId("InternalSerialNumber");
-pub const PANASONIC_J_P_E_G_QUALITY: TagId = TagId("JPEGQuality");
+pub const PANASONIC_JPEG_QUALITY: TagId = TagId("JPEGQuality");
 pub const PANASONIC_LANDMARK: TagId = TagId("Landmark");
 pub const PANASONIC_LENS_FIRMWARE_VERSION: TagId = TagId("LensFirmwareVersion");
 pub const PANASONIC_LENS_TYPE: TagId = TagId("LensType");
@@ -99,7 +99,7 @@ pub const PANASONIC_TIME_LAPSE_SHOT_NUMBER: TagId = TagId("TimeLapseShotNumber")
 pub const PANASONIC_TIME_SINCE_POWER_ON: TagId = TagId("TimeSincePowerOn");
 pub const PANASONIC_TIME_STAMP: TagId = TagId("TimeStamp");
 pub const PANASONIC_TIMER_RECORDING: TagId = TagId("TimerRecording");
-pub const PANASONIC_TOUCH_A_E: TagId = TagId("TouchAE");
+pub const PANASONIC_TOUCH_AE: TagId = TagId("TouchAE");
 pub const PANASONIC_TRANSFORM: TagId = TagId("Transform");
 pub const PANASONIC_TRAVEL_DAY: TagId = TagId("TravelDay");
 pub const PANASONIC_VIDEO_BURST_MODE: TagId = TagId("VideoBurstMode");

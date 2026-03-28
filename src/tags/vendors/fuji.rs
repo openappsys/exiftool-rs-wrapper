@@ -2,10 +2,10 @@
 
 use crate::TagId;
 
-pub const FUJI_A_F_AREA_MODE: TagId = TagId("AFAreaMode");
-pub const FUJI_A_F_AREA_POINT_SIZE: TagId = TagId("AFAreaPointSize");
-pub const FUJI_A_F_AREA_ZONE_SIZE: TagId = TagId("AFAreaZoneSize");
-pub const FUJI_A_F_MODE: TagId = TagId("AFMode");
+pub const FUJI_AF_AREA_MODE: TagId = TagId("AFAreaMode");
+pub const FUJI_AF_AREA_POINT_SIZE: TagId = TagId("AFAreaPointSize");
+pub const FUJI_AF_AREA_ZONE_SIZE: TagId = TagId("AFAreaZoneSize");
+pub const FUJI_AF_MODE: TagId = TagId("AFMode");
 pub const FUJI_ADVANCED_FILTER: TagId = TagId("AdvancedFilter");
 pub const FUJI_AUTO_BRACKETING: TagId = TagId("AutoBracketing");
 pub const FUJI_AUTO_DYNAMIC_RANGE: TagId = TagId("AutoDynamicRange");
@@ -76,7 +76,7 @@ pub const FUJI_PERIPHERAL_LIGHTING: TagId = TagId("PeripheralLighting");
 pub const FUJI_PICTURE_MODE: TagId = TagId("PictureMode");
 pub const FUJI_PIXEL_SHIFT_OFFSET: TagId = TagId("PixelShiftOffset");
 pub const FUJI_PIXEL_SHIFT_SHOTS: TagId = TagId("PixelShiftShots");
-pub const FUJI_PRE_A_F: TagId = TagId("PreAF");
+pub const FUJI_PRE_AF: TagId = TagId("PreAF");
 pub const FUJI_RATING: TagId = TagId("Rating");
 pub const FUJI_RAW_IMAGE_HEIGHT: TagId = TagId("RawImageHeight");
 pub const FUJI_RAW_IMAGE_WIDTH: TagId = TagId("RawImageWidth");
