@@ -1530,25 +1530,120 @@ impl<'et> QueryBuilder<'et> {
 
     /// 解析响应
     fn parse_response(&self, response: Response) -> Result<Metadata> {
-        if response.is_error() {
-            return Err(Error::process(
-                response
-                    .error_message()
-                    .unwrap_or_else(|| "Unknown error".to_string()),
-            ));
-        }
-
-        let json_value: Vec<serde_json::Value> = response.json()?;
-
-        if json_value.is_empty() {
-            return Ok(Metadata::new());
-        }
-
-        // 取第一个（也是唯一一个）结果
-        let metadata: Metadata = serde_json::from_value(json_value[0].clone())?;
-
-        Ok(metadata)
+        parse_query_response(response)
     }
+}
+
+/// 异步查询执行方法
+///
+/// 在 `async` feature 开启时，为 `QueryBuilder` 提供异步执行方法。
+/// Builder 的链式调用仍然是同步的（仅收集参数），
+/// 只有最终的 `async_execute` 才通过 `spawn_blocking` 异步执行。
+#[cfg(feature = "async")]
+impl QueryBuilder<'_> {
+    /// 异步执行查询
+    ///
+    /// 内部先收集参数（纯数据），然后在阻塞线程池中执行 ExifTool 命令。
+    /// 适用于 `AsyncExifTool::query_builder()` 返回的构建器。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::AsyncExifTool;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let async_et = AsyncExifTool::new()?;
+    ///
+    /// let metadata = async_et.query_builder("photo.jpg")
+    ///     .binary()
+    ///     .group_headings(None)
+    ///     .tag("Make")
+    ///     .async_execute()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn async_execute(self) -> Result<Metadata> {
+        // 先收集参数（纯数据，无引用）
+        let args = self.build_args(true);
+        // clone ExifTool（内部是 Arc，开销极小）
+        let exiftool = self.exiftool.clone();
+        tokio::task::spawn_blocking(move || {
+            let response = exiftool.execute_raw(&args)?;
+            parse_query_response(response)
+        })
+        .await
+        .map_err(|e| Error::process(format!("异步查询任务执行失败: {}", e)))?
+    }
+
+    /// 异步执行查询并返回 JSON
+    ///
+    /// 与 `execute_json` 相同，但在阻塞线程池中异步执行。
+    pub async fn async_execute_json(self) -> Result<serde_json::Value> {
+        let args = self.build_args(true);
+        let exiftool = self.exiftool.clone();
+        tokio::task::spawn_blocking(move || {
+            let response = exiftool.execute_raw(&args)?;
+            response.json()
+        })
+        .await
+        .map_err(|e| Error::process(format!("异步查询任务执行失败: {}", e)))?
+    }
+
+    /// 异步执行查询并反序列化为自定义类型
+    ///
+    /// 与 `execute_as` 相同，但在阻塞线程池中异步执行。
+    pub async fn async_execute_as<T: serde::de::DeserializeOwned + Send + 'static>(
+        self,
+    ) -> Result<T> {
+        let args = self.build_args(true);
+        let exiftool = self.exiftool.clone();
+        tokio::task::spawn_blocking(move || {
+            let response = exiftool.execute_raw(&args)?;
+            response.json()
+        })
+        .await
+        .map_err(|e| Error::process(format!("异步查询任务执行失败: {}", e)))?
+    }
+
+    /// 异步执行查询并返回纯文本
+    ///
+    /// 与 `execute_text` 相同，但在阻塞线程池中异步执行。
+    pub async fn async_execute_text(self) -> Result<String> {
+        let args = self.build_args(false);
+        let exiftool = self.exiftool.clone();
+        tokio::task::spawn_blocking(move || {
+            let response = exiftool.execute_raw(&args)?;
+            Ok(response.text().trim().to_string())
+        })
+        .await
+        .map_err(|e| Error::process(format!("异步查询任务执行失败: {}", e)))?
+    }
+}
+
+/// 解析查询响应为 Metadata
+///
+/// 从 ExifTool 的 JSON 响应中解析出 Metadata 对象。
+/// 此函数被同步 `execute` 和异步 `async_execute` 共用。
+fn parse_query_response(response: Response) -> Result<Metadata> {
+    if response.is_error() {
+        return Err(Error::process(
+            response
+                .error_message()
+                .unwrap_or_else(|| "Unknown error".to_string()),
+        ));
+    }
+
+    let json_value: Vec<serde_json::Value> = response.json()?;
+
+    if json_value.is_empty() {
+        return Ok(Metadata::new());
+    }
+
+    // 取第一个（也是唯一一个）结果
+    let metadata: Metadata = serde_json::from_value(json_value[0].clone())?;
+
+    Ok(metadata)
 }
 
 /// 批量查询构建器
@@ -1801,5 +1896,120 @@ mod tests {
         assert!(args.windows(2).any(|w| w == ["-api", "QuickTimeUTC=1"]));
         assert!(args.windows(2).any(|w| w == ["-userParam", "k=v"]));
         assert!(args.windows(2).any(|w| w == ["-password", "p"]));
+    }
+
+    /// 测试 args_file 方法：验证 -@ 参数文件选项构建正确
+    #[test]
+    fn test_args_file() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        // 创建临时参数文件，写入 -FileName
+        let tmp_dir = std::env::temp_dir();
+        let args_path = tmp_dir.join("exiftool_test_args.txt");
+        std::fs::write(&args_path, "-FileName\n").expect("写入临时参数文件失败");
+
+        let args = exiftool
+            .query("photo.jpg")
+            .args_file(args_path.to_string_lossy().as_ref())
+            .build_args(false);
+
+        // 验证 args 包含 ["-@", "<路径>"]
+        assert!(
+            args.windows(2)
+                .any(|w| w[0] == "-@" && w[1] == args_path.to_string_lossy().as_ref()),
+            "参数列表应包含 -@ 和参数文件路径，实际: {:?}",
+            args
+        );
+
+        // 清理临时文件
+        let _ = std::fs::remove_file(&args_path);
+    }
+
+    /// 测试 csv_delimiter 方法：验证 -csvDelim 参数构建正确
+    #[test]
+    fn test_csv_delimiter() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        let args = exiftool
+            .query("photo.jpg")
+            .csv_delimiter(",")
+            .build_args(false);
+
+        assert!(
+            args.windows(2).any(|w| w == ["-csvDelim", ","]),
+            "参数列表应包含 [\"-csvDelim\", \",\"]，实际: {:?}",
+            args
+        );
+    }
+
+    /// 测试 unknown_binary 方法：验证 -U 参数构建正确
+    #[test]
+    fn test_unknown_binary() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        let args = exiftool
+            .query("photo.jpg")
+            .unknown_binary()
+            .build_args(false);
+
+        assert!(
+            args.iter().any(|a| a == "-U"),
+            "参数列表应包含 \"-U\"，实际: {:?}",
+            args
+        );
+    }
+
+    /// 测试 recursive_hidden 方法：验证 -r. 参数构建正确
+    #[test]
+    fn test_recursive_hidden() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        let args = exiftool
+            .query("/photos")
+            .recursive_hidden()
+            .build_args(false);
+
+        assert!(
+            args.iter().any(|a| a == "-r."),
+            "参数列表应包含 \"-r.\"，实际: {:?}",
+            args
+        );
+    }
+
+    /// 测试 source_file 方法：验证 -srcfile 参数构建正确
+    #[test]
+    fn test_source_file() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        let args = exiftool
+            .query("photo.jpg")
+            .source_file("%d%f.xmp")
+            .build_args(false);
+
+        assert!(
+            args.windows(2).any(|w| w == ["-srcfile", "%d%f.xmp"]),
+            "参数列表应包含 [\"-srcfile\", \"%d%f.xmp\"]，实际: {:?}",
+            args
+        );
     }
 }

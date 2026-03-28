@@ -42,6 +42,61 @@ impl AsyncExifTool {
         }
     }
 
+    /// 获取查询构建器
+    ///
+    /// 返回同步的 `QueryBuilder`，用户可以链式调用所有查询选项，
+    /// 最后使用 `async_execute()` 异步执行。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::AsyncExifTool;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let async_et = AsyncExifTool::new()?;
+    ///
+    /// // 使用完整的链式 API
+    /// let metadata = async_et.query_builder("photo.jpg")
+    ///     .binary()
+    ///     .group_headings(None)
+    ///     .tag("Make")
+    ///     .tag("Model")
+    ///     .async_execute()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn query_builder<P: AsRef<Path>>(&self, path: P) -> crate::QueryBuilder<'_> {
+        self.inner.query(path)
+    }
+
+    /// 获取写入构建器
+    ///
+    /// 返回同步的 `WriteBuilder`，用户可以链式调用所有写入选项，
+    /// 最后使用 `async_execute()` 异步执行。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::AsyncExifTool;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let async_et = AsyncExifTool::new()?;
+    ///
+    /// // 使用完整的链式 API
+    /// let result = async_et.write_builder("photo.jpg")
+    ///     .tag("Artist", "Photographer")
+    ///     .tag("Copyright", "© 2026")
+    ///     .overwrite_original(true)
+    ///     .async_execute()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn write_builder<P: AsRef<Path>>(&self, path: P) -> crate::WriteBuilder<'_> {
+        self.inner.write(path)
+    }
+
     /// 异步查询元数据
     pub async fn query<P: AsRef<Path> + Send>(&self, path: P) -> Result<Metadata> {
         let exiftool = Arc::clone(&self.inner);
@@ -325,5 +380,91 @@ mod tests {
             .await
             .expect("capability snapshot should succeed");
         assert!(snapshot.tags_count > 0);
+    }
+
+    #[tokio::test]
+    async fn test_query_builder_async_execute() {
+        // 验证 query_builder 链式调用 + async_execute 可用
+        let et = match AsyncExifTool::new() {
+            Ok(et) => et,
+            Err(crate::Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let temp = tempfile::tempdir().expect("创建临时目录失败");
+        let file = temp.path().join("test.jpg");
+        std::fs::write(&file, crate::tests::tiny_jpeg()).expect("写入测试图片失败");
+
+        // 使用链式 API 进行异步查询
+        let metadata = et
+            .query_builder(&file)
+            .tag("FileName")
+            .tag("FileSize")
+            .raw_values(true)
+            .async_execute()
+            .await
+            .expect("异步查询应成功");
+
+        assert!(metadata.get("FileName").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_write_builder_async_execute() {
+        // 验证 write_builder 链式调用 + async_execute 可用
+        let et = match AsyncExifTool::new() {
+            Ok(et) => et,
+            Err(crate::Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let temp = tempfile::tempdir().expect("创建临时目录失败");
+        let file = temp.path().join("test.jpg");
+        std::fs::write(&file, crate::tests::tiny_jpeg()).expect("写入测试图片失败");
+
+        // 使用链式 API 进行异步写入
+        let result = et
+            .write_builder(&file)
+            .tag("Artist", "AsyncTest")
+            .tag("Copyright", "© 2026")
+            .overwrite_original(true)
+            .async_execute()
+            .await
+            .expect("异步写入应成功");
+
+        assert!(result.is_success());
+
+        // 验证写入结果
+        let metadata = et
+            .query_builder(&file)
+            .tag("Artist")
+            .async_execute()
+            .await
+            .expect("异步查询应成功");
+
+        let artist = metadata.get("Artist").expect("应包含 Artist 标签");
+        assert_eq!(artist.to_string(), "AsyncTest");
+    }
+
+    #[tokio::test]
+    async fn test_query_builder_async_execute_text() {
+        // 验证 async_execute_text 可用
+        let et = match AsyncExifTool::new() {
+            Ok(et) => et,
+            Err(crate::Error::ExifToolNotFound) => return,
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let temp = tempfile::tempdir().expect("创建临时目录失败");
+        let file = temp.path().join("test.jpg");
+        std::fs::write(&file, crate::tests::tiny_jpeg()).expect("写入测试图片失败");
+
+        let text = et
+            .query_builder(&file)
+            .print_format("$FileName")
+            .async_execute_text()
+            .await
+            .expect("异步文本查询应成功");
+
+        assert!(text.contains("test.jpg"));
     }
 }

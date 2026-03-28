@@ -1,6 +1,6 @@
 use exiftool_rs_wrapper::{Error, ExifTool};
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs;
 
 #[derive(Debug, Serialize)]
@@ -354,6 +354,121 @@ fn catalog_options() -> Vec<&'static str> {
         "-X",
         "-z",
     ]
+}
+
+/// 从 exiftool -h 帮助文本中自动提取选项，并与手工总表比对
+#[test]
+fn test_auto_extract_options_from_help() {
+    // 检查 ExifTool 是否可用
+    let exiftool = match create_exiftool() {
+        Ok(et) => et,
+        Err(Error::ExifToolNotFound) => return,
+        Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+    };
+
+    // 通过 stay_open 模式执行 -h 获取帮助文本
+    // 注意：在 stay_open 模式下 -h 是 HTML 格式选项，不带文件参数时
+    // ExifTool 会输出帮助文档
+    let response = exiftool
+        .execute(&["-h"])
+        .expect("执行 exiftool -h 应当成功");
+    let help_text = response.text();
+
+    // 如果 stay_open 模式下 -h 返回为空，则用独立进程获取帮助
+    let help_text = if help_text.trim().is_empty() || !help_text.contains("Option") {
+        // 确定可执行文件路径
+        let exe = std::env::var("EXIFTOOL_PATH").unwrap_or_else(|_| "exiftool".to_string());
+        let output = std::process::Command::new(&exe)
+            .arg("-h")
+            .output()
+            .expect("执行 exiftool -h 子进程失败");
+        String::from_utf8_lossy(&output.stdout).to_string()
+    } else {
+        help_text
+    };
+
+    // 截取 "Option Overview" 到 "Option Details" 之间的概览部分
+    // 避免将 "Option Details" 中的大量示例选项误提取
+    let options_section = {
+        let start = help_text.find("Option Overview").unwrap_or(0);
+        let end = help_text.find("Option Details").unwrap_or(help_text.len());
+        if start < end {
+            &help_text[start..end]
+        } else {
+            &help_text[start..]
+        }
+    };
+
+    // 从帮助文本中提取以 `-` 开头的选项名
+    // 匹配形如 `-word` 的 token
+    // 忽略 `-TAG` 这类全大写占位符
+    // 忽略 `--TAG` 双横线排除语法
+    let mut help_options = BTreeSet::new();
+    for word in options_section.split_whitespace() {
+        // 跳过双横线开头的
+        if word.starts_with("--") {
+            continue;
+        }
+        // 必须以单个 `-` 开头
+        if !word.starts_with('-') {
+            continue;
+        }
+        // 去除可能的尾部标点（括号、逗号等）
+        let cleaned = word.trim_end_matches(|c: char| {
+            c == ',' || c == ')' || c == '(' || c == ']' || c == '[' || c == ':'
+        });
+        // 至少要有 `-` 加一个字符
+        if cleaned.len() < 2 {
+            continue;
+        }
+        // 获取去掉 `-` 后的选项名部分
+        let option_body = &cleaned[1..];
+        // 忽略全大写的占位符（如 `-TAG`, `-TAGNAME`）
+        if option_body
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c == '+' || c == '#')
+        {
+            continue;
+        }
+        // 选项名必须以字母开头（排除像 `-=` 之类的）
+        if !option_body.starts_with(|c: char| c.is_ascii_alphabetic()) {
+            continue;
+        }
+        help_options.insert(cleaned.to_string());
+    }
+
+    // 获取手工总表
+    let catalog: BTreeSet<String> = catalog_options().into_iter().map(String::from).collect();
+
+    // 计算差集：帮助中有但总表中没有的选项
+    let missing: Vec<&String> = help_options.difference(&catalog).collect();
+
+    // 生成报告
+    let report = serde_json::json!({
+        "description": "帮助文本中有但手工总表中没有的选项",
+        "help_options_count": help_options.len(),
+        "catalog_options_count": catalog.len(),
+        "missing_count": missing.len(),
+        "missing_options": missing,
+    });
+
+    fs::create_dir_all("target/compatibility").expect("创建 compatibility 目录失败");
+    fs::write(
+        "target/compatibility/missing-options.json",
+        serde_json::to_string_pretty(&report).expect("序列化 missing-options 报告失败"),
+    )
+    .expect("写入 missing-options.json 失败");
+
+    // 输出摘要到测试日志（不 assert 失败，仅生成报告）
+    println!(
+        "帮助文本选项数: {}, 手工总表选项数: {}, 总表中缺少的选项数: {}",
+        help_options.len(),
+        catalog.len(),
+        missing.len()
+    );
+    if !missing.is_empty() {
+        println!("缺少的选项: {:?}", missing);
+    }
 }
 
 fn option_semantics(option: &str) -> (String, String, String) {

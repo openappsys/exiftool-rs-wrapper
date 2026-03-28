@@ -416,19 +416,7 @@ impl<'et> WriteBuilder<'et> {
     pub fn execute(self) -> Result<WriteResult> {
         let args = self.build_args();
         let response = self.exiftool.execute_raw(&args)?;
-
-        if response.is_error() {
-            return Err(Error::process(
-                response
-                    .error_message()
-                    .unwrap_or_else(|| "Unknown write error".to_string()),
-            ));
-        }
-
-        Ok(WriteResult {
-            path: self.path,
-            lines: response.lines().to_vec(),
-        })
+        parse_write_response(response, self.path)
     }
 
     /// 构建参数列表
@@ -504,6 +492,69 @@ impl<'et> WriteBuilder<'et> {
 
         args
     }
+}
+
+/// 异步写入执行方法
+///
+/// 在 `async` feature 开启时，为 `WriteBuilder` 提供异步执行方法。
+/// Builder 的链式调用仍然是同步的（仅收集参数），
+/// 只有最终的 `async_execute` 才通过 `spawn_blocking` 异步执行。
+#[cfg(feature = "async")]
+impl WriteBuilder<'_> {
+    /// 异步执行写入操作
+    ///
+    /// 内部先收集参数（纯数据），然后在阻塞线程池中执行 ExifTool 命令。
+    /// 适用于 `AsyncExifTool::write_builder()` 返回的构建器。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::AsyncExifTool;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let async_et = AsyncExifTool::new()?;
+    ///
+    /// let result = async_et.write_builder("photo.jpg")
+    ///     .tag("Artist", "Photographer")
+    ///     .tag("Copyright", "© 2026")
+    ///     .overwrite_original(true)
+    ///     .async_execute()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn async_execute(self) -> Result<WriteResult> {
+        // 先收集参数（纯数据，无引用）
+        let args = self.build_args();
+        let path = self.path.clone();
+        // clone ExifTool（内部是 Arc，开销极小）
+        let exiftool = self.exiftool.clone();
+        tokio::task::spawn_blocking(move || {
+            let response = exiftool.execute_raw(&args)?;
+            parse_write_response(response, path)
+        })
+        .await
+        .map_err(|e| Error::process(format!("异步写入任务执行失败: {}", e)))?
+    }
+}
+
+/// 解析写入响应为 WriteResult
+///
+/// 从 ExifTool 的响应中解析写入结果。
+/// 此函数被同步 `execute` 和异步 `async_execute` 共用。
+fn parse_write_response(response: crate::process::Response, path: PathBuf) -> Result<WriteResult> {
+    if response.is_error() {
+        return Err(Error::process(
+            response
+                .error_message()
+                .unwrap_or_else(|| "Unknown write error".to_string()),
+        ));
+    }
+
+    Ok(WriteResult {
+        path,
+        lines: response.lines().to_vec(),
+    })
 }
 
 /// 写入操作结果
@@ -589,5 +640,26 @@ mod tests {
 
         assert!(result.is_success());
         assert_eq!(result.updated_count(), Some(1));
+    }
+
+    /// 测试 global_time_shift 方法：验证 -globalTimeShift 参数构建正确
+    #[test]
+    fn test_global_time_shift() {
+        let exiftool = match crate::ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时发生意外错误: {:?}", e),
+        };
+
+        let args = exiftool
+            .write("photo.jpg")
+            .global_time_shift("+02:00")
+            .build_args();
+
+        assert!(
+            args.windows(2).any(|w| w == ["-globalTimeShift", "+02:00"]),
+            "参数列表应包含 [\"-globalTimeShift\", \"+02:00\"]，实际: {:?}",
+            args
+        );
     }
 }
