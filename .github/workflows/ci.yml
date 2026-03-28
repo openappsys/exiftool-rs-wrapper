@@ -206,7 +206,10 @@ jobs:
       - name: 安装 ExifTool 最新版 (Ubuntu)
         if: matrix.os == 'ubuntu-latest' && matrix.exiftool_source == 'latest'
         run: |
-          curl -fsSL -o /tmp/exiftool.tar.gz https://exiftool.org/Image-ExifTool.tar.gz
+          # 从 SourceForge 下载最新版（exiftool.org 已重定向到 SourceForge）
+          # 使用 -L 参数跟随重定向
+          curl -fsSL -L -o /tmp/exiftool.tar.gz "https://sourceforge.net/projects/exiftool/files/latest/download" || \
+          curl -fsSL -L -o /tmp/exiftool.tar.gz "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-13.53.tar.gz/download"
           tar -xzf /tmp/exiftool.tar.gz -C /tmp
           EXIFTOOL_DIR=$(find /tmp -maxdepth 1 -type d -name 'Image-ExifTool-*' | head -n 1)
           chmod +x "$EXIFTOOL_DIR/exiftool"

@@ -481,34 +481,93 @@ fn test_auto_extract_options_from_help() {
             continue;
         }
         // 去除可能的尾部标点（括号、逗号等）
-        let cleaned = word.trim_end_matches(|c: char| {
-            c == ',' || c == ')' || c == '(' || c == ']' || c == '[' || c == ':'
-        });
+        let cleaned = word.trim_end_matches([',', ')', '(', ']', ':']);
         // 至少要有 `-` 加一个字符
         if cleaned.len() < 2 {
             continue;
         }
         // 获取去掉 `-` 后的选项名部分
         let option_body = &cleaned[1..];
-        // 忽略全大写的占位符（如 `-TAG`, `-TAGNAME`）
+
+        // 处理逗号分隔的多选项（如 `-E,-ex,-ec`）
+        if option_body.contains(',') {
+            // 将逗号分隔的选项逐个处理
+            for opt in option_body.split(',') {
+                // 重建带 `-` 前缀的选项名
+                let opt_with_dash = format!("-{}", opt);
+                // 验证选项基本格式
+                if !opt.is_empty() && opt.starts_with(|c: char| c.is_ascii_alphabetic()) {
+                    // 对于 `-E`、`-ex`、`-ec` 这种短选项，需要映射到长选项名
+                    let mapped_opt = map_short_option_to_full(&opt_with_dash);
+                    help_options.insert(mapped_opt);
+                }
+            }
+            continue;
+        }
+
+        // 忽略全大写的占位符（如 `-TAG`, `-TAGNAME`），但保留 `-ee` 等特殊短选项
+        // 例外：`-TAG[+-]<=DATFILE` 这类占位符形式虽然以 `-TAG` 开头，但包含特殊字符
+        // 如果选项体包含 `[` 或其他特殊字符，说明是占位符语法，跳过
+        if option_body.contains('[') || option_body.contains('=') {
+            // 这是 `-TAG[...` 或 `-TAG=...` 形式的占位符，代表标签写入运算符变体
+            // 这些实际上是 `-TAG<=FILE`、`-TAG+=VALUE` 等的语法说明，不是真实选项名
+            continue;
+        }
+
+        // 忽略全大写的纯占位符（如 `-TAG`, `-DSTTAG`）
         if option_body
             .chars()
-            .all(|c| c.is_ascii_uppercase() || c == '+' || c == '#')
+            .all(|c| c.is_ascii_uppercase() || c == '+' || c == '#' || c == '<')
         {
             continue;
         }
+
         // 选项名必须以字母开头（排除像 `-=` 之类的）
         if !option_body.starts_with(|c: char| c.is_ascii_alphabetic()) {
             continue;
         }
-        help_options.insert(cleaned.to_string());
+
+        // 短选项映射到完整形式
+        let mapped_opt = map_short_option_to_full(cleaned);
+        help_options.insert(mapped_opt);
     }
 
     // 获取手工总表
     let catalog: BTreeSet<String> = catalog_options().into_iter().map(String::from).collect();
 
-    // 计算差集：帮助中有但总表中没有的选项
-    let missing: Vec<&String> = help_options.difference(&catalog).collect();
+    // 将帮助中的压缩形式选项映射到基本形式，用于与总表比对
+    // 例如：`-fast[NUM]` 的基本形式是 `-fast`，`-W[+|!]` 的基本形式是 `-W`
+    // 处理 `-ee[NUM` 这种 help 文本中被截断缺少右括号的情况
+    let normalize_help_option = |opt: &str| -> String {
+        // 先应用短选项映射
+        let mapped = map_short_option_to_full(opt);
+
+        // 截取到第一个 `[` 之前（如 `-fast[NUM]` -> `-fast`）
+        if let Some(pos) = mapped.find('[') {
+            mapped[..pos].to_string()
+        } else {
+            mapped
+        }
+    };
+
+    // 计算差集：帮助中有但总表中没有的选项（基于基本形式匹配）
+    let missing: Vec<&String> = help_options
+        .iter()
+        .filter(|opt| {
+            let base = normalize_help_option(opt);
+            // 帮助选项的基本形式不在总表中，也不是总表某项的前缀
+            !catalog.contains(&base)
+                && !catalog.contains(opt.as_str())
+                && !catalog.iter().any(|c| {
+                    let c_base = if let Some(pos) = c.find(['[', '=']) {
+                        &c[..pos]
+                    } else {
+                        c.as_str()
+                    };
+                    c_base == base
+                })
+        })
+        .collect();
 
     // 生成报告
     let report = serde_json::json!({
@@ -535,6 +594,19 @@ fn test_auto_extract_options_from_help() {
     );
     if !missing.is_empty() {
         println!("缺少的选项: {:?}", missing);
+    }
+}
+
+/// 将帮助文本中的短选项映射到总表中的完整选项名
+fn map_short_option_to_full(opt: &str) -> String {
+    match opt {
+        "-E" => "-E".to_string(),                 // escape_html
+        "-ex" => "-ex".to_string(),               // escape_xml
+        "-ec" => "-ec".to_string(),               // escape_c
+        "-ee" => "-extractEmbedded".to_string(),  // extract_embedded 的缩写
+        "-ee2" => "-extractEmbedded".to_string(), // extract_embedded 的缩写
+        "-ee3" => "-extractEmbedded".to_string(), // extract_embedded 的缩写
+        _ => opt.to_string(),
     }
 }
 
