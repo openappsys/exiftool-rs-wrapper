@@ -1,52 +1,11 @@
 //! 配置和校验模块
 //!
-//! 支持配置文件加载、自定义标签定义、校验和计算
+//! 支持配置文件加载、文件比较、十六进制转储、详细输出
 
 use crate::ExifTool;
 use crate::error::Result;
 use crate::types::TagId;
-use std::path::{Path, PathBuf};
-
-/// 校验和算法
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ChecksumAlgorithm {
-    /// MD5
-    MD5,
-    /// SHA1
-    SHA1,
-    /// SHA256
-    SHA256,
-    /// SHA512
-    SHA512,
-}
-
-impl ChecksumAlgorithm {
-    /// 获取算法名称
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::MD5 => "MD5",
-            Self::SHA1 => "SHA1",
-            Self::SHA256 => "SHA256",
-            Self::SHA512 => "SHA512",
-        }
-    }
-
-    /// 获取 ExifTool 参数
-    pub fn arg(&self) -> String {
-        format!("-{}", self.name())
-    }
-}
-
-/// 校验和结果
-#[derive(Debug, Clone)]
-pub struct ChecksumResult {
-    /// 文件路径
-    pub path: PathBuf,
-    /// 校验和值
-    pub checksum: String,
-    /// 算法
-    pub algorithm: ChecksumAlgorithm,
-}
+use std::path::Path;
 
 /// 文件比较结果
 #[derive(Debug, Clone)]
@@ -108,28 +67,6 @@ pub trait ConfigOperations {
     /// 加载配置文件（`-config`）
     fn with_config<P: AsRef<Path>>(&self, config_path: P) -> ExifTool;
 
-    /// 计算校验和
-    fn calculate_checksum<P: AsRef<Path>>(
-        &self,
-        path: P,
-        algorithm: ChecksumAlgorithm,
-    ) -> Result<ChecksumResult>;
-
-    /// 计算多个校验和
-    fn calculate_checksums<P: AsRef<Path>>(
-        &self,
-        path: P,
-        algorithms: &[ChecksumAlgorithm],
-    ) -> Result<Vec<ChecksumResult>>;
-
-    /// 验证文件完整性
-    fn verify_checksum<P: AsRef<Path>>(
-        &self,
-        path: P,
-        expected: &str,
-        algorithm: ChecksumAlgorithm,
-    ) -> Result<bool>;
-
     /// 比较两个文件的元数据
     fn diff<P: AsRef<Path>, Q: AsRef<Path>>(&self, source: P, target: Q) -> Result<DiffResult>;
 
@@ -145,51 +82,6 @@ pub trait ConfigOperations {
 impl ConfigOperations for ExifTool {
     fn with_config<P: AsRef<Path>>(&self, config_path: P) -> ExifTool {
         ExifTool::with_config(self, config_path)
-    }
-
-    fn calculate_checksum<P: AsRef<Path>>(
-        &self,
-        path: P,
-        algorithm: ChecksumAlgorithm,
-    ) -> Result<ChecksumResult> {
-        let args = vec![
-            algorithm.arg(),
-            "-b".to_string(),
-            path.as_ref().to_string_lossy().to_string(),
-        ];
-
-        let response = self.execute_raw(&args)?;
-        let checksum = response.text().trim().to_string();
-
-        Ok(ChecksumResult {
-            path: path.as_ref().to_path_buf(),
-            checksum,
-            algorithm,
-        })
-    }
-
-    fn calculate_checksums<P: AsRef<Path>>(
-        &self,
-        path: P,
-        algorithms: &[ChecksumAlgorithm],
-    ) -> Result<Vec<ChecksumResult>> {
-        let mut results = Vec::with_capacity(algorithms.len());
-
-        for algo in algorithms {
-            results.push(self.calculate_checksum(path.as_ref(), *algo)?);
-        }
-
-        Ok(results)
-    }
-
-    fn verify_checksum<P: AsRef<Path>>(
-        &self,
-        path: P,
-        expected: &str,
-        algorithm: ChecksumAlgorithm,
-    ) -> Result<bool> {
-        let result = self.calculate_checksum(path, algorithm)?;
-        Ok(result.checksum.eq_ignore_ascii_case(expected))
     }
 
     fn diff<P: AsRef<Path>, Q: AsRef<Path>>(&self, source: P, target: Q) -> Result<DiffResult> {
@@ -391,12 +283,23 @@ impl VerboseOperations for ExifTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ExifTool;
+    use crate::error::Error;
 
-    #[test]
-    fn test_checksum_algorithm() {
-        assert_eq!(ChecksumAlgorithm::MD5.name(), "MD5");
-        assert_eq!(ChecksumAlgorithm::SHA256.arg(), "-SHA256");
-    }
+    /// 最小有效 JPEG 文件字节数组，用于创建临时测试文件
+    const TINY_JPEG: &[u8] = &[
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00,
+        0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,
+        0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B,
+        0x0C, 0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
+        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31,
+        0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF,
+        0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00,
+        0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x09, 0xFF, 0xC4, 0x00, 0x14, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01,
+        0x00, 0x00, 0x3F, 0x00, 0xD2, 0xCF, 0x20, 0xFF, 0xD9,
+    ];
 
     #[test]
     fn test_diff_result() {
@@ -433,5 +336,52 @@ mod tests {
         let args = opts.args();
         assert!(args.contains(&"-v2".to_string()));
         assert!(args.contains(&"-htmlDump".to_string()));
+    }
+
+    #[test]
+    fn test_diff_two_different_files() {
+        // 检查 ExifTool 是否可用，不可用则跳过
+        let et = match ExifTool::new() {
+            Ok(et) => et,
+            Err(Error::ExifToolNotFound) => return,
+            Err(e) => panic!("创建 ExifTool 实例时出现意外错误: {:?}", e),
+        };
+
+        // 创建两个内容相同的临时 JPEG 文件
+        let tmp_dir = tempfile::tempdir().expect("创建临时目录失败");
+        let file_a = tmp_dir.path().join("diff_a.jpg");
+        let file_b = tmp_dir.path().join("diff_b.jpg");
+        std::fs::write(&file_a, TINY_JPEG).expect("写入文件 A 失败");
+        std::fs::write(&file_b, TINY_JPEG).expect("写入文件 B 失败");
+
+        // 分别写入不同的元数据，使两个文件产生差异
+        et.write(&file_a)
+            .tag("Artist", "Alice")
+            .tag("Copyright", "2026 Alice")
+            .overwrite_original(true)
+            .execute()
+            .expect("写入文件 A 的元数据失败");
+
+        et.write(&file_b)
+            .tag("Artist", "Bob")
+            .tag("Copyright", "2026 Bob")
+            .overwrite_original(true)
+            .execute()
+            .expect("写入文件 B 的元数据失败");
+
+        // 比较两个文件
+        let diff = et.diff(&file_a, &file_b).expect("执行 diff 操作失败");
+
+        // 验证两个文件不相同
+        assert!(
+            !diff.is_identical,
+            "写入不同元数据后的两个文件的 diff 结果应为不相同"
+        );
+        // 验证差异列表中包含有差异的标签
+        // Artist 和 Copyright 至少会产生差异
+        assert!(
+            !diff.different.is_empty(),
+            "diff 结果的 different 列表不应为空，应至少包含 Artist/Copyright 的差异"
+        );
     }
 }

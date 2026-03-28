@@ -76,13 +76,14 @@ impl BatchScript {
                 continue;
             }
 
-            let parts: Vec<&str> = line.split_whitespace().collect();
+            // 使用引号感知分词器解析参数，支持双引号和单引号
+            let parts = split_quoted(line);
             if parts.is_empty() {
                 continue;
             }
 
             let cmd = parts[0].to_lowercase();
-            let args = &parts[1..];
+            let args: Vec<&str> = parts[1..].iter().map(|s| s.as_str()).collect();
 
             match cmd.as_str() {
                 "read" => {
@@ -344,6 +345,52 @@ impl PipeProcessor {
     }
 }
 
+/// 引号感知分词器，支持双引号和单引号包裹的参数
+///
+/// 例如：`write photo.jpg Copyright "© 2026"` 会被解析为
+/// `["write", "photo.jpg", "Copyright", "© 2026"]`
+fn split_quoted(input: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    // 当前是否在引号内
+    let mut in_quote: Option<char> = None;
+
+    for ch in input.chars() {
+        match in_quote {
+            Some(quote_char) => {
+                if ch == quote_char {
+                    // 遇到匹配的结束引号，关闭引号状态
+                    in_quote = None;
+                } else {
+                    // 引号内的字符原样保留
+                    current.push(ch);
+                }
+            }
+            None => {
+                if ch == '"' || ch == '\'' {
+                    // 遇到开始引号，进入引号状态
+                    in_quote = Some(ch);
+                } else if ch.is_whitespace() {
+                    // 遇到空白字符，结束当前词元
+                    if !current.is_empty() {
+                        tokens.push(current.clone());
+                        current.clear();
+                    }
+                } else {
+                    current.push(ch);
+                }
+            }
+        }
+    }
+
+    // 处理最后一个词元
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
+}
+
 /// 批处理脚本示例
 pub fn example_script() -> &'static str {
     r#"# ExifTool 批处理脚本示例
@@ -366,4 +413,55 @@ batch photo1.jpg photo2.jpg photo3.jpg
 # 打印消息
 print "批处理完成"
 "#
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_quoted_basic() {
+        // 测试基本分词
+        let result = split_quoted("read photo.jpg Make Model");
+        assert_eq!(result, vec!["read", "photo.jpg", "Make", "Model"]);
+    }
+
+    #[test]
+    fn test_split_quoted_double_quotes() {
+        // 测试双引号包裹的参数
+        let result = split_quoted(r#"write photo.jpg Copyright "© 2026 Photographer""#);
+        assert_eq!(
+            result,
+            vec!["write", "photo.jpg", "Copyright", "© 2026 Photographer"]
+        );
+    }
+
+    #[test]
+    fn test_split_quoted_single_quotes() {
+        // 测试单引号包裹的参数
+        let result = split_quoted("write photo.jpg Artist 'John Doe'");
+        assert_eq!(result, vec!["write", "photo.jpg", "Artist", "John Doe"]);
+    }
+
+    #[test]
+    fn test_split_quoted_mixed() {
+        // 测试混合引号
+        let result = split_quoted(r#"print "hello 'world'" end"#);
+        assert_eq!(result, vec!["print", "hello 'world'", "end"]);
+    }
+
+    #[test]
+    fn test_split_quoted_empty_input() {
+        // 测试空输入
+        let result = split_quoted("");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_from_string_with_quotes() {
+        // 测试带引号的脚本解析
+        let content = r#"write photo.jpg Copyright "© 2026 My Company""#.to_string();
+        let script = BatchScript::from_string(content).unwrap();
+        assert_eq!(script.commands.len(), 1);
+    }
 }

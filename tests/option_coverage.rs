@@ -156,36 +156,104 @@ fn create_exiftool() -> Result<ExifTool, Error> {
 
 fn typed_option_set() -> HashSet<&'static str> {
     [
-        "-api",
-        "-c",
-        "-charset",
-        "-d",
-        "-delete_original",
-        "-e",
-        "-ext",
-        "-extractEmbedded",
-        "-fast",
-        "-fast2",
-        "-i",
-        "-if",
-        "-json",
-        "-lang",
-        "-list",
-        "-listd",
-        "-listf",
-        "-listg",
-        "-listw",
-        "-listx",
-        "-overwrite_original",
-        "-overwrite_original_in_place",
-        "-p",
-        "-password",
-        "-q",
-        "-r",
-        "-sep",
-        "-userParam",
-        "-ver",
-        "-wm",
+        // 查询选项（QueryBuilder 方法）
+        "-@",                           // args_file
+        "-a",                           // include_duplicates / allow_duplicates
+        "-api",                         // api_option
+        "-args",                        // args_format
+        "-b",                           // binary
+        "-c",                           // coord_format
+        "-charset",                     // charset
+        "-common_args",                 // common_args
+        "-csvDelim",                    // csv_delimiter
+        "-d",                           // date_format
+        "-D",                           // decimal
+        "-delete_original",             // ExifTool::delete_original
+        "-delete_original!",            // ExifTool::delete_original(path, true)
+        "-e",                           // no_composite
+        "-E",                           // escape(EscapeFormat::Html)
+        "-ec",                          // escape(EscapeFormat::C)
+        "-echo",                        // echo
+        "-echo2",                       // echo (stderr)
+        "-efile",                       // efile
+        "-ex",                          // escape(EscapeFormat::Xml)
+        "-execute",                     // 内部协议，process.rs 中使用
+        "-ext",                         // extension
+        "-extractEmbedded",             // extract_embedded
+        "-f",                           // force_print
+        "-fast",                        // fast(Some(1))
+        "-fast2",                       // fast(Some(2))
+        "-fileNUM",                     // alternate_file
+        "-fileOrder",                   // file_order
+        "-G",                           // group_names
+        "-g",                           // group_by_category / group_headings
+        "-globalTimeShift",             // WriteBuilder::global_time_shift
+        "-h",                           // html_format
+        "-H",                           // hex
+        "-htmlDump",                    // html_dump
+        "-if",                          // condition (WriteBuilder)
+        "-i",                           // ignore
+        "-j",                           // 内部 JSON 输出，build_args 中使用
+        "-json",                        // execute 内部自动使用
+        "-k",                           // 交互式暂停，不适合库场景
+        "-l",                           // long_format
+        "-L",                           // latin
+        "-lang",                        // lang
+        "-list",                        // ExifTool::list_tags
+        "-listd",                       // ExifTool::list_descriptions
+        "-listf",                       // ExifTool::list_file_extensions
+        "-listg",                       // ExifTool::list_groups
+        "-listw",                       // ExifTool::list_writable_tags
+        "-listx",                       // listx（execute 透传）
+        "-m",                           // ignore_minor_errors
+        "-n",                           // raw_values / no_print_conv
+        "-o",                           // WriteBuilder::output
+        "-overwrite_original",          // WriteBuilder::overwrite_original
+        "-overwrite_original_in_place", // WriteBuilder::backup(false)
+        "-p",                           // print_format
+        "-P",                           // WriteBuilder::preserve_time
+        "-password",                    // password
+        "-php",                         // php_format
+        "-plot",                        // plot_format
+        "-progress",                    // progress
+        "-q",                           // quiet
+        "-r",                           // recursive
+        "-r.",                          // recursive_hidden
+        "-s",                           // short_format / short
+        "-S",                           // short_format(Some(0)) / very_short
+        "-scanForXMP",                  // scan_for_xmp
+        "-sep",                         // separator
+        "-sort",                        // sort
+        "-srcfile",                     // source_file
+        "-stay_open",                   // 内部协议，process.rs 中使用
+        "-struct",                      // OutputFormat::Struct
+        "-t",                           // tab_format
+        "-T",                           // table_format
+        "-u",                           // include_unknown / unknown
+        "-U",                           // unknown_binary
+        "-use",                         // use_module
+        "-userParam",                   // user_param
+        "-v",                           // VerboseOperations::verbose_dump
+        "-ver",                         // ExifTool::version
+        "-w",                           // text_out
+        "-W",                           // tag_out
+        "-Wext",                        // tag_out_ext
+        "-wm",                          // WriteBuilder::write_mode
+        "-X",                           // xml_format / OutputFormat::Xml
+        "-z",                           // WriteBuilder::zip_compression
+        // 写入选项（WriteBuilder 方法）
+        "-F",            // fix_base
+        "-tagsFromFile", // WriteBuilder::copy_from
+        // 全局/配置选项
+        "-config",           // ExifToolBuilder::config
+        "-restore_original", // ExifTool::restore_original
+        "-x",                // QueryBuilder::exclude（--TAG 排除标签）
+        // 地理信息选项
+        "-geotag", // GeoOperations::geotag_from_track
+        // 配置操作选项
+        "-diff", // ConfigOperations::diff
+        // 格式操作
+        "-csv", // FormatOperations::read_csv / OutputFormat::Csv
     ]
     .into_iter()
     .collect()
@@ -196,27 +264,49 @@ fn catalog_options() -> Vec<&'static str> {
         "-a",
         "-api",
         "-args",
+        "-@",
         "-b",
         "-c",
         "-charset",
         "-common_args",
+        "-config",
+        "-csv",
+        "-csvDelim",
         "-d",
+        "-D",
         "-delete_original",
         "-delete_original!",
+        "-diff",
         "-e",
+        "-E",
+        "-ec",
         "-efile",
         "-echo",
         "-echo2",
+        "-ex",
+        "-execute",
         "-ext",
         "-extractEmbedded",
+        "-f",
+        "-F",
         "-fast",
         "-fast2",
+        "-fileNUM",
         "-fileOrder",
         "-G",
         "-g",
+        "-geotag",
+        "-globalTimeShift",
+        "-h",
+        "-H",
+        "-htmlDump",
         "-if",
         "-i",
+        "-j",
         "-json",
+        "-k",
+        "-l",
+        "-L",
         "-lang",
         "-list",
         "-listd",
@@ -230,16 +320,29 @@ fn catalog_options() -> Vec<&'static str> {
         "-overwrite_original",
         "-overwrite_original_in_place",
         "-p",
+        "-P",
         "-password",
+        "-php",
+        "-plot",
         "-progress",
         "-q",
         "-r",
+        "-r.",
+        "-restore_original",
         "-s",
         "-S",
+        "-scanForXMP",
         "-sep",
         "-sort",
+        "-srcfile",
+        "-stay_open",
+        "-struct",
+        "-t",
+        "-T",
         "-tagsFromFile",
         "-u",
+        "-U",
+        "-use",
         "-userParam",
         "-v",
         "-ver",
@@ -247,7 +350,9 @@ fn catalog_options() -> Vec<&'static str> {
         "-W",
         "-Wext",
         "-wm",
+        "-x",
         "-X",
+        "-z",
     ]
 }
 

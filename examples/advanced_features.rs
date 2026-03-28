@@ -14,9 +14,8 @@
 //! ```
 
 use exiftool_rs_wrapper::{
-    AdvancedWriteOperations, ChecksumAlgorithm, ConfigOperations, DateTimeOffset, DiffResult,
-    ExifTool, HexDumpOperations, HexDumpOptions, NumericOperation, TagId, VerboseOperations,
-    VerboseOptions,
+    AdvancedWriteOperations, ConfigOperations, DateTimeOffset, DiffResult, ExifTool,
+    HexDumpOperations, HexDumpOptions, NumericOperation, TagId, VerboseOperations, VerboseOptions,
 };
 use std::path::PathBuf;
 
@@ -127,53 +126,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // ============================================================
-    // 4. 校验和计算
+    // 4. 校验和计算（已废弃，仅展示说明）
     // ============================================================
-    println!("4️⃣  计算文件校验和");
-    println!("   用于验证文件完整性\n");
-
-    // 4.1 计算单个校验和
-    println!("   🔐 计算 MD5 校验和:");
-    match exiftool.calculate_checksum(&image_path, ChecksumAlgorithm::MD5) {
-        Ok(result) => {
-            println!("      算法: {}", result.algorithm.name());
-            println!(
-                "      校验和: {}",
-                &result.checksum[..32.min(result.checksum.len())]
-            );
-            println!("      文件: {}", result.path.display());
-        }
-        Err(e) => eprintln!("   ❌ 计算失败: {}", e),
-    }
-
-    // 4.2 计算多个校验和
-    println!("\n   🔐 计算多个校验和:");
-    let algorithms = vec![ChecksumAlgorithm::MD5, ChecksumAlgorithm::SHA256];
-
-    match exiftool.calculate_checksums(&image_path, &algorithms) {
-        Ok(results) => {
-            for result in results {
-                let checksum_short = &result.checksum[..16.min(result.checksum.len())];
-                println!("      {}: {}...", result.algorithm.name(), checksum_short);
-            }
-        }
-        Err(e) => eprintln!("   ❌ 计算失败: {}", e),
-    }
-
-    // 4.3 验证校验和
-    println!("\n   🔐 验证文件完整性:");
-    let expected_checksum = "d41d8cd98f00b204e9800998ecf8427e"; // 示例 MD5
-
-    match exiftool.verify_checksum(&image_path, expected_checksum, ChecksumAlgorithm::MD5) {
-        Ok(valid) => {
-            if valid {
-                println!("      ✅ 校验和匹配");
-            } else {
-                println!("      ❌ 校验和不匹配（预期值与实际值不同）");
-            }
-        }
-        Err(e) => eprintln!("   ❌ 验证失败: {}", e),
-    }
+    println!("4️⃣  校验和计算");
+    println!("   注意: ExifTool 不原生支持校验和计算，该功能已废弃");
+    println!("   建议使用 Rust 标准库或 sha2/md5 crate 直接计算文件校验和");
     println!();
 
     // ============================================================

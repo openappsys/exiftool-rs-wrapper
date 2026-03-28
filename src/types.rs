@@ -836,15 +836,14 @@ impl fmt::Display for TagValue {
 }
 
 /// 元数据结构
+///
+/// ExifTool 的 `-json -G` 输出中，分组信息已通过键名中的 `Group:Tag` 格式体现，
+/// 因此不再单独维护 groups 字段。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Metadata {
     /// 顶层标签
     #[serde(flatten)]
     tags: HashMap<String, TagValue>,
-
-    /// 分组标签（如 EXIF、IPTC、XMP 等）
-    #[serde(skip)]
-    groups: HashMap<String, Metadata>,
 }
 
 impl Metadata {
@@ -883,21 +882,6 @@ impl Metadata {
         &mut self.tags
     }
 
-    /// 获取分组
-    pub fn group(&self, name: &str) -> Option<&Metadata> {
-        self.groups.get(name)
-    }
-
-    /// 设置分组
-    pub fn set_group(&mut self, name: impl Into<String>, metadata: Metadata) {
-        self.groups.insert(name.into(), metadata);
-    }
-
-    /// 获取所有分组
-    pub fn groups(&self) -> &HashMap<String, Metadata> {
-        &self.groups
-    }
-
     /// 检查是否包含标签
     pub fn contains(&self, tag: &str) -> bool {
         self.tags.contains_key(tag)
@@ -921,7 +905,6 @@ impl Metadata {
     /// 合并另一个元数据
     pub fn merge(&mut self, other: Metadata) {
         self.tags.extend(other.tags);
-        self.groups.extend(other.groups);
     }
 
     /// 遍历所有标签

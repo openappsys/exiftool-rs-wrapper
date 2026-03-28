@@ -268,12 +268,13 @@ impl AdvancedWriteOperations for ExifTool {
         Ok(())
     }
 
-    fn write_if<P: AsRef<Path>, F>(&self, path: P, _condition: &str, builder_fn: F) -> Result<()>
+    fn write_if<P: AsRef<Path>, F>(&self, path: P, condition: &str, builder_fn: F) -> Result<()>
     where
         F: FnOnce(WriteBuilder<'_>) -> WriteBuilder<'_>,
     {
-        // 使用 builder_fn 构建 WriteBuilder，它已经可以通过 .condition() 设置条件
-        let builder = self.write(path);
+        // 先创建 WriteBuilder 并设置 condition 参数，确保条件过滤生效，
+        // 然后再将构建器交给 builder_fn 进行后续配置
+        let builder = self.write(path).condition(condition);
         let builder = builder_fn(builder);
         builder.execute().map(|_| ())
     }

@@ -367,6 +367,32 @@ impl<'et> WriteBuilder<'et> {
         self
     }
 
+    /// 全局时间偏移
+    ///
+    /// 对应 ExifTool 的 `-globalTimeShift` 选项，对所有日期/时间标签
+    /// 应用统一的时间偏移。格式为 `[+|-]Y:M:D H:M:S`。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 将所有时间标签向前偏移 1 小时
+    /// exiftool.write("photo.jpg")
+    ///     .global_time_shift("+0:0:0 1:0:0")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn global_time_shift(mut self, shift: impl Into<String>) -> Self {
+        self.raw_args.push("-globalTimeShift".to_string());
+        self.raw_args.push(shift.into());
+        self
+    }
+
     /// 日期/时间偏移
     ///
     /// 示例: `.offset("DateTimeOriginal", "+1:0:0 0:0:0")` 表示增加 1 天

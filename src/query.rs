@@ -434,6 +434,177 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
+    /// 从文件读取参数
+    ///
+    /// 对应 ExifTool 的 `-@` 选项，从指定文件中读取命令行参数，
+    /// 每行一个参数。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .args_file("args.txt")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn args_file(mut self, path: impl Into<String>) -> Self {
+        self.args.push("-@".to_string());
+        self.args.push(path.into());
+        self
+    }
+
+    /// 设置 CSV 分隔符
+    ///
+    /// 对应 ExifTool 的 `-csvDelim` 选项，设置 CSV 输出中使用的分隔符字符。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let output = exiftool.query("photo.jpg")
+    ///     .csv_delimiter("\t")
+    ///     .execute_text()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn csv_delimiter(mut self, delim: impl Into<String>) -> Self {
+        self.args.push("-csvDelim".to_string());
+        self.args.push(delim.into());
+        self
+    }
+
+    /// 加载替代文件的标签信息
+    ///
+    /// 对应 ExifTool 的 `-fileNUM` 选项，从替代文件中加载标签。
+    /// `num` 为文件编号（1-9），`path` 为替代文件路径。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .alternate_file(1, "other.jpg")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn alternate_file(mut self, num: u8, path: impl Into<String>) -> Self {
+        self.args.push(format!("-file{}", num));
+        self.args.push(path.into());
+        self
+    }
+
+    /// 递归处理子目录（包含隐藏目录）
+    ///
+    /// 对应 ExifTool 的 `-r.` 选项，递归处理时包含以 `.` 开头的隐藏目录。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("/photos")
+    ///     .recursive_hidden()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn recursive_hidden(mut self) -> Self {
+        self.args.push("-r.".to_string());
+        self
+    }
+
+    /// 设置源文件格式
+    ///
+    /// 对应 ExifTool 的 `-srcfile` 选项，指定处理时使用的源文件格式字符串。
+    /// 支持使用 `%d`、`%f`、`%e` 等占位符来匹配不同的源文件。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 从 XMP sidecar 文件读取标签
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .source_file("%d%f.xmp")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn source_file(mut self, fmt: impl Into<String>) -> Self {
+        self.args.push("-srcfile".to_string());
+        self.args.push(fmt.into());
+        self
+    }
+
+    /// 提取未知二进制标签
+    ///
+    /// 对应 ExifTool 的 `-U` 选项，提取未知的二进制标签值。
+    /// 比 `-u` 更激进，会尝试解码未知的二进制数据。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .unknown_binary()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn unknown_binary(mut self) -> Self {
+        self.args.push("-U".to_string());
+        self
+    }
+
+    /// 加载 ExifTool 插件模块
+    ///
+    /// 对应 ExifTool 的 `-use` 选项，加载指定的 ExifTool 插件模块。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .use_module("MWG")
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn use_module(mut self, module: impl Into<String>) -> Self {
+        self.args.push("-use".to_string());
+        self.args.push(module.into());
+        self
+    }
+
     /// 设置自定义打印格式
     ///
     /// 使用 `-p` 选项按指定格式打印输出。
@@ -466,6 +637,238 @@ impl<'et> QueryBuilder<'et> {
     pub fn print_format(mut self, format: impl Into<String>) -> Self {
         self.args.push("-p".to_string());
         self.args.push(format.into());
+        self
+    }
+
+    /// 禁用打印转换
+    ///
+    /// 使用 `-n` 选项禁用所有打印转换，显示原始数值。
+    /// 与 `raw_values()` 功能相同，但提供更直观的命名。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 禁用打印转换，获取原始数值
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .no_print_conv()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn no_print_conv(mut self) -> Self {
+        self.raw_values = true;
+        self
+    }
+
+    /// 二进制输出
+    ///
+    /// 使用 `-b` 选项以二进制格式输出标签值。
+    /// 通常用于提取缩略图、预览图等二进制数据。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 以二进制格式输出
+    /// let output = exiftool.query("photo.jpg")
+    ///     .binary()
+    ///     .tag("ThumbnailImage")
+    ///     .execute_text()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn binary(mut self) -> Self {
+        self.args.push("-b".to_string());
+        self
+    }
+
+    /// 按组分类输出
+    ///
+    /// 使用 `-g` 选项按组分类显示标签。
+    /// 可选参数指定分组级别（0-7），默认为 0。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// // 按默认分组级别显示
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .group_headings(None)
+    ///     .execute()?;
+    ///
+    /// // 按指定分组级别显示
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .group_headings(Some(1))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn group_headings(mut self, num: Option<u8>) -> Self {
+        match num {
+            Some(n) => self.args.push(format!("-g{}", n)),
+            None => self.args.push("-g".to_string()),
+        }
+        self
+    }
+
+    /// 短输出格式
+    ///
+    /// 使用 `-s` 选项以短格式输出标签名。
+    /// 可选参数指定短格式级别：
+    /// - `None` 或 `Some(1)` - `-s` 使用标签名而非描述
+    /// - `Some(2)` - `-s2` 更短的输出
+    /// - `Some(3)` - `-s3` 最短输出
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .short(Some(2))
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn short(mut self, level: Option<u8>) -> Self {
+        match level {
+            Some(n) if n > 1 => self.args.push(format!("-s{}", n)),
+            _ => self.args.push("-s".to_string()),
+        }
+        self
+    }
+
+    /// 极短输出格式
+    ///
+    /// 使用 `-S` 选项以极短格式输出（仅标签名和值）
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let output = exiftool.query("photo.jpg")
+    ///     .very_short()
+    ///     .execute_text()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn very_short(mut self) -> Self {
+        self.args.push("-S".to_string());
+        self
+    }
+
+    /// 允许重复标签
+    ///
+    /// 使用 `-a` 选项允许输出中包含重复的标签。
+    /// 与 `include_duplicates(true)` 功能相同。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .allow_duplicates()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn allow_duplicates(mut self) -> Self {
+        self.include_duplicates = true;
+        self
+    }
+
+    /// 提取未知标签
+    ///
+    /// 使用 `-u` 选项提取未知标签。
+    /// 与 `include_unknown(true)` 功能相同。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .unknown()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn unknown(mut self) -> Self {
+        self.include_unknown = true;
+        self
+    }
+
+    /// XML 格式输出
+    ///
+    /// 使用 `-X` 选项以 XML/RDF 格式输出。
+    /// 通常与 `execute_text()` 配合使用获取 XML 文本。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let xml = exiftool.query("photo.jpg")
+    ///     .xml_format()
+    ///     .execute_text()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn xml_format(mut self) -> Self {
+        self.args.push("-X".to_string());
+        self
+    }
+
+    /// 忽略次要错误
+    ///
+    /// 使用 `-m` 选项忽略次要错误和警告，继续处理。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use exiftool_rs_wrapper::ExifTool;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let exiftool = ExifTool::new()?;
+    ///
+    /// let metadata = exiftool.query("photo.jpg")
+    ///     .ignore_minor_errors()
+    ///     .execute()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn ignore_minor_errors(mut self) -> Self {
+        self.args.push("-m".to_string());
         self
     }
 
@@ -1215,19 +1618,22 @@ impl<'et> BatchQueryBuilder<'et> {
 
     /// 设置 GPS 坐标格式
     pub fn coord_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-c {}", format.into()));
+        self.args.push("-c".to_string());
+        self.args.push(format.into());
         self
     }
 
     /// 设置日期/时间格式
     pub fn date_format(mut self, format: impl Into<String>) -> Self {
-        self.args.push(format!("-d {}", format.into()));
+        self.args.push("-d".to_string());
+        self.args.push(format.into());
         self
     }
 
     /// 设置密码
     pub fn password(mut self, passwd: impl Into<String>) -> Self {
-        self.args.push(format!("-password {}", passwd.into()));
+        self.args.push("-password".to_string());
+        self.args.push(passwd.into());
         self
     }
 

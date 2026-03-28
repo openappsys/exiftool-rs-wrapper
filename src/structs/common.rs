@@ -259,3 +259,93 @@ pub struct SimpleMetadata {
     #[serde(rename = "GPSLongitude")]
     pub gps_longitude: Option<f64>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_simple_metadata_from_exiftool_json() {
+        // 模拟 ExifTool -json 输出中单个文件的 JSON 对象
+        let json_str = r#"{
+            "SourceFile": "/tmp/test_photo.jpg",
+            "FileName": "test_photo.jpg",
+            "FileSize": "2.5 MB",
+            "MIMEType": "image/jpeg",
+            "ImageWidth": 4000,
+            "ImageHeight": 3000,
+            "Make": "Canon",
+            "Model": "EOS R5",
+            "DateTimeOriginal": "2026:01:15 10:30:00",
+            "GPSLatitude": 39.9042,
+            "GPSLongitude": 116.4074
+        }"#;
+
+        // 反序列化为 SimpleMetadata 结构体
+        let meta: SimpleMetadata =
+            serde_json::from_str(json_str).expect("反序列化 SimpleMetadata 失败");
+
+        // 验证必填字段
+        assert_eq!(meta.file_name, "test_photo.jpg");
+        assert_eq!(meta.file_size, "2.5 MB");
+        assert_eq!(meta.mime_type, "image/jpeg");
+
+        // 验证可选字段
+        assert_eq!(meta.width, Some(4000));
+        assert_eq!(meta.height, Some(3000));
+        assert_eq!(meta.make, Some("Canon".to_string()));
+        assert_eq!(meta.model, Some("EOS R5".to_string()));
+        assert_eq!(meta.date_taken, Some("2026:01:15 10:30:00".to_string()));
+        assert_eq!(meta.gps_latitude, Some(39.9042));
+        assert_eq!(meta.gps_longitude, Some(116.4074));
+    }
+
+    #[test]
+    fn test_deserialize_metadata_with_groups() {
+        // 模拟 ExifTool -json -g2 输出（分层结构）
+        let json_str = r#"{
+            "SourceFile": "/tmp/grouped.jpg",
+            "File": {
+                "FileName": "grouped.jpg",
+                "FileSize": "1.2 MB",
+                "MIMEType": "image/jpeg"
+            },
+            "EXIF": {
+                "Make": "Nikon",
+                "Model": "Z 9",
+                "ImageWidth": 8256,
+                "ImageHeight": 5504,
+                "DateTimeOriginal": "2026:03:28 14:00:00",
+                "ISO": 200,
+                "FNumber": 2.8,
+                "ExposureTime": 0.004,
+                "FocalLength": 50.0
+            }
+        }"#;
+
+        // 反序列化为分层 Metadata 结构体
+        let meta: Metadata = serde_json::from_str(json_str).expect("反序列化分层 Metadata 失败");
+
+        // 验证源文件路径
+        assert_eq!(meta.source_file, "/tmp/grouped.jpg");
+
+        // 验证文件信息
+        assert_eq!(meta.file.file_name, "grouped.jpg");
+        assert_eq!(meta.file.file_size, "1.2 MB");
+        assert_eq!(meta.file.mime_type, "image/jpeg");
+
+        // 验证 EXIF 信息
+        let exif = meta.exif.expect("EXIF 信息应存在");
+        assert_eq!(exif.make, Some("Nikon".to_string()));
+        assert_eq!(exif.model, Some("Z 9".to_string()));
+        assert_eq!(exif.image_width, Some(8256));
+        assert_eq!(exif.image_height, Some(5504));
+        assert_eq!(exif.iso, Some(200));
+        assert_eq!(exif.f_number, Some(2.8));
+
+        // 验证可选分组未提供时为 None
+        assert!(meta.gps.is_none());
+        assert!(meta.iptc.is_none());
+        assert!(meta.xmp.is_none());
+    }
+}

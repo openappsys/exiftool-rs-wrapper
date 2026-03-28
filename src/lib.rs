@@ -33,7 +33,6 @@
 //! ```
 
 // 模块声明
-mod batch;
 mod binary;
 mod config;
 mod error;
@@ -43,7 +42,6 @@ mod geo;
 mod pool;
 mod process;
 mod query;
-mod repl;
 mod retry;
 mod stream;
 mod tags;
@@ -82,12 +80,12 @@ pub use format::{FormatOperations, FormattedOutput, OutputFormat, ReadOptions};
 pub use file_ops::{FileOperations, OrganizeOptions, RenamePattern};
 
 // 地理信息
-pub use geo::{GeoOperations, GeocodeResult, GpsCoordinate};
+pub use geo::{GeoOperations, GpsCoordinate};
 
 // 配置和校验
 pub use config::{
-    ChecksumAlgorithm, ChecksumResult, ConfigOperations, DiffResult, HexDumpOperations,
-    HexDumpOptions, VerboseOperations, VerboseOptions,
+    ConfigOperations, DiffResult, HexDumpOperations, HexDumpOptions, VerboseOperations,
+    VerboseOptions,
 };
 
 // 流式处理和性能优化
@@ -101,12 +99,6 @@ pub use retry::{BatchResult, Recoverable, RetryPolicy, with_retry_sync};
 
 #[cfg(feature = "async")]
 pub use retry::with_retry;
-
-// 批处理脚本和管道
-pub use batch::{BatchResult as ScriptBatchResult, BatchScript, PipeProcessor, example_script};
-
-// REPL 交互式 shell
-pub use repl::{ReplShell, run_repl};
 
 #[cfg(feature = "async")]
 pub use async_ext::{AsyncExifTool, process_files_parallel, read_metadata_parallel};
