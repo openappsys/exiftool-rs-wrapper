@@ -136,6 +136,11 @@ path = "examples/async_usage.rs"
 required-features = ["async"]
 
 [[example]]
+name = "async_performance"
+path = "examples/async_performance.rs"
+required-features = ["async"]
+
+[[example]]
 name = "error_handling"
 path = "examples/error_handling.rs"
 
