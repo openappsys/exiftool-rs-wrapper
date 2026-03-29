@@ -1,0 +1,19 @@
+{
+  "name": "exiftool-capability-baseline",
+  "description": "用于 100% 兼容性目标的最低能力基线",
+  "minimums": {
+    "writable_tags": 100,
+    "file_extensions": 50,
+    "probe_coverage_percent": 95.0
+  },
+  "required_probes": [
+    { "id": "version", "args": ["-ver"], "min_words": 1 },
+    { "id": "listw", "args": ["-listw"], "min_words": 50 },
+    { "id": "listf", "args": ["-listf"], "min_words": 20 },
+    { "id": "list", "args": ["-list"], "min_words": 20 },
+    { "id": "listx", "args": ["-listx"], "min_words": 100 },
+    { "id": "listg", "args": ["-listg"], "min_words": 10 },
+    { "id": "listd", "args": ["-listd"], "min_words": 10 }
+  ],
+  "known_gaps": []
+}
