@@ -117,7 +117,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match exiftool.numeric_operation(
         &test_copy,
-        TagId::EXPOSURE_COMPENSATION,
+        TagId::ExposureCompensation,
         NumericOperation::Add(5), // 假设以 0.1 为单位存储
     ) {
         Ok(_) => println!("   ✅ 数值运算成功"),
