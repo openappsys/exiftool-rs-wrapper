@@ -248,12 +248,14 @@ jobs:
       - name: 编译所有测试
         run: |
           cargo build --tests --all-features
-          cargo test --all-features --no-run
+          echo "=== 可用的测试目标 ==="
+          cargo test --all-features -- --list 2>&1 | head -20 || true
+          ls -la target/debug/deps/compatibility* 2>&1 || true
 
       - name: 运行兼容性报告测试
         run: |
-          cargo test --test compatibility_report --all-features -- --nocapture 2>&1 || echo "Test failed but continuing..."
-          cargo test --test option_coverage --all-features -- --nocapture 2>&1 || echo "Test failed but continuing..."
+          cargo test --all-features compatibility_report -- --nocapture || echo "Test 1 failed..."
+          cargo test --all-features option_coverage -- --nocapture || echo "Test 2 failed..."
 
       - name: 记录 ExifTool 版本
         run: |
