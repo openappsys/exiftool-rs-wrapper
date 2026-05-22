@@ -185,8 +185,13 @@ impl ExifToolInner {
         self.read_response_for_id(None)
     }
 
-    /// 读取特定命令编号的响应
+    /// 读取特定命令编号的响应（使用 CommandId）
     fn read_response_for_id(&mut self, expected_id: Option<CommandId>) -> Result<Response> {
+        self.read_response_inner(expected_id.map(|id| id.value()))
+    }
+
+    /// 读取响应的核心逻辑，统一处理 {ready} / {readyNUM} 标记
+    fn read_response_inner(&mut self, expected_num: Option<u32>) -> Result<Response> {
         let mut lines = Vec::new();
 
         loop {
@@ -204,10 +209,10 @@ impl ExifToolInner {
             if trimmed.starts_with("{ready") && trimmed.ends_with('}') {
                 if trimmed == "{ready}" {
                     // 无编号响应
-                    if let Some(expected) = expected_id {
+                    if let Some(expected) = expected_num {
                         return Err(Error::process(format!(
                             "Expected {{ready{}}}, but received {{ready}}",
-                            expected.value()
+                            expected
                         )));
                     }
                     break;
@@ -226,15 +231,13 @@ impl ExifToolInner {
                 } else {
                     // 解析命令编号
                     match content.parse::<u32>() {
-                        Ok(id) => {
-                            let received_id = CommandId::new(id);
-                            if let Some(expected) = expected_id
-                                && received_id != expected
+                        Ok(num) => {
+                            if let Some(expected) = expected_num
+                                && num != expected
                             {
                                 return Err(Error::process(format!(
                                     "命令编号不匹配: 期望 {}, 收到 {}",
-                                    expected.value(),
-                                    received_id.value()
+                                    expected, num
                                 )));
                             }
                             break;
@@ -305,63 +308,9 @@ impl ExifToolInner {
         Ok(responses)
     }
 
-    /// 读取特定命令编号的响应
+    /// 读取特定命令编号的响应（使用 usize）
     fn read_response_for_num(&mut self, expected_num: Option<usize>) -> Result<Response> {
-        let mut lines = Vec::new();
-
-        loop {
-            let buffer = match self.stdout_rx.recv_timeout(self.response_timeout) {
-                Ok(line) => line,
-                Err(RecvTimeoutError::Timeout) => return Err(Error::Timeout),
-                Err(RecvTimeoutError::Disconnected) => {
-                    return Err(Error::process("Unexpected EOF from ExifTool process"));
-                }
-            };
-
-            let trimmed = buffer.trim();
-            debug!("Received line: {}", trimmed);
-
-            if trimmed.starts_with("{ready") && trimmed.ends_with('}') {
-                if trimmed == "{ready}" {
-                    // 无编号响应
-                    if let Some(expected) = expected_num {
-                        return Err(Error::process(format!(
-                            "Expected {{ready{}}}, but received {{ready}}",
-                            expected
-                        )));
-                    }
-                    break;
-                }
-
-                // 解析 {readyNUM} 格式
-                let content = &trimmed[6..trimmed.len() - 1];
-
-                // 尝试解析为命令编号
-                match content.parse::<usize>() {
-                    Ok(num) => {
-                        if let Some(expected) = expected_num
-                            && num != expected
-                        {
-                            return Err(Error::process(format!(
-                                "命令编号不匹配: 期望 {}, 收到 {}",
-                                expected, num
-                            )));
-                        }
-                        break;
-                    }
-                    Err(_) => {
-                        return Err(Error::process(format!(
-                            "无法解析 {{ready}} 标记中的编号: {}",
-                            trimmed
-                        )));
-                    }
-                }
-            }
-
-            lines.push(buffer.clone());
-        }
-
-        Ok(Response::new(lines))
+        self.read_response_inner(expected_num.map(|n| n as u32))
     }
 
     /// 刷新 stdin

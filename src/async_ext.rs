@@ -580,9 +580,9 @@ impl AsyncExifTool {
                     let _ = tx.send(StreamEvent::MetadataChunk(metadata)).await;
                     let _ = tx.send(StreamEvent::Complete).await;
                 }
-                Err(_e) => {
-                    // 错误通过通道关闭隐式传播
-                    drop(tx);
+                Err(e) => {
+                    let _ = tx.send(StreamEvent::Error(e)).await;
+                    let _ = tx.send(StreamEvent::Complete).await;
                 }
             }
         });
@@ -676,8 +676,9 @@ impl AsyncExifTool {
                     let _ = tx.send(StreamEvent::MetadataChunk(metadata)).await;
                     let _ = tx.send(StreamEvent::Complete).await;
                 }
-                Err(_e) => {
-                    drop(tx);
+                Err(e) => {
+                    let _ = tx.send(StreamEvent::Error(e)).await;
+                    let _ = tx.send(StreamEvent::Complete).await;
                 }
             }
         });

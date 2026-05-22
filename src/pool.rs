@@ -212,9 +212,7 @@ where
     }
 
     for handle in handles {
-        if handle.join().is_err() {
-            return vec![Err(Error::process("Thread panicked"))];
-        }
+        let _ = handle.join();
     }
 
     let mut out = Vec::with_capacity(total);

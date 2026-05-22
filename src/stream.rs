@@ -349,7 +349,7 @@ impl PerformanceStats {
         let total = self.total_operations.load(Ordering::SeqCst);
         let time = self.total_time_us.load(Ordering::SeqCst);
 
-        if total == 0 { 0 } else { time / total }
+        time.checked_div(total).unwrap_or(0)
     }
 
     /// 获取成功率
@@ -382,12 +382,14 @@ pub mod async_stream {
     use tokio::sync::watch;
 
     /// 流事件类型
-    #[derive(Debug, Clone)]
+    #[derive(Debug)]
     pub enum StreamEvent {
         /// 进度更新（已处理字节数，总字节数）
         Progress(usize, usize),
         /// 元数据块（用于流式解析）
         MetadataChunk(Metadata),
+        /// 处理错误
+        Error(Error),
         /// 处理完成
         Complete,
         /// 处理取消

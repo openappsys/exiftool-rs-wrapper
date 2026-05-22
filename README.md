@@ -104,7 +104,7 @@ exiftool -ver
 
 ```toml
 [dependencies]
-exiftool-rs-wrapper = "0.1.4"
+exiftool-rs-wrapper = "0.1.5"
 
 # 启用异步支持（可选）
 exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
@@ -352,38 +352,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use exiftool_rs_wrapper::{
-    ExifTool, 
-    file_ops::{FileOperations, RenamePattern}
+    ExifTool,
+    file_ops::FileOperations
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use exiftool_rs_wrapper::file_ops::RenamePattern;
     let exiftool = ExifTool::new()?;
-    
+
     // 基于日期时间重命名文件
-    exiftool.rename_by_pattern(
+    let new_path = exiftool.rename_file(
         "photo.jpg",
-        RenamePattern::datetime("%Y%m%d_%H%M%S"),
+        &RenamePattern::datetime("%Y%m%d_%H%M%S"),
     )?;
-    
+    println!("新文件名: {:?}", new_path);
+
     // 基于相机型号重命名
-    exiftool.rename_by_pattern(
+    let new_path = exiftool.rename_file(
         "photo.jpg",
-        RenamePattern::tag_with_suffix(
+        &RenamePattern::tag_with_suffix(
             exiftool_rs_wrapper::TagId::Model,
             "_IMG"
         ),
     )?;
-    
+    println!("新文件名: {:?}", new_path);
+
     // 组织文件到目录结构
     use exiftool_rs_wrapper::file_ops::OrganizeOptions;
-    
+
     let options = OrganizeOptions::new("/output/directory")
-        .subdir(RenamePattern::datetime("%Y/%m"))  // 按年月创建子目录
+        .subdir(RenamePattern::datetime("%Y/%m"))
         .filename(RenamePattern::datetime("%Y%m%d_%H%M%S"))
         .extension("jpg");
-    
-    exiftool.organize_files(&["photo1.jpg", "photo2.jpg"], &options)?;
-    
+
+    exiftool.organize("photo1.jpg", &options)?;
+
     Ok(())
 }
 ```
@@ -391,32 +394,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### 地理信息处理
 
 ```rust
-use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations};
+use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations, geo::GpsCoordinate};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
-    
+
     // 读取 GPS 坐标
-    if let Some(coord) = exiftool.get_gps_coordinates("photo.jpg")? {
+    if let Some(coord) = exiftool.get_gps("photo.jpg")? {
         println!("纬度: {}", coord.latitude);
         println!("经度: {}", coord.longitude);
-        println!("海拔: {:?}", coord.altitude);
     }
-    
+
     // 写入 GPS 坐标
-    use exiftool_rs_wrapper::geo::GpsCoordinate;
-    
-    let coord = GpsCoordinate::new(39.9042, 116.4074)
-        .altitude(43.5);
-    
-    exiftool.set_gps_coordinates("photo.jpg", &coord)?;
-    
-    // 反向地理编码（需要互联网连接）
-    if let Some(location) = exiftool.reverse_geocode(&coord)? {
-        println!("城市: {}", location.city);
-        println!("国家: {}", location.country);
-    }
-    
+    let coord = GpsCoordinate::new(39.9042, 116.4074)?;
+
+    exiftool.set_gps("photo.jpg", &coord)?;
+
+    // 删除 GPS 信息
+    exiftool.remove_gps("photo.jpg")?;
+
     Ok(())
 }
 ```
@@ -433,10 +429,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
     
     // 配置重试策略
-    let policy = RetryPolicy::new()
-        .max_attempts(3)
+    let policy = RetryPolicy::new(3)
         .initial_delay(std::time::Duration::from_millis(100))
-        .exponential_backoff(true);
+        .backoff(2.0);
     
     // 使用重试执行操作
     let metadata = with_retry_sync(&policy, || {
@@ -452,26 +447,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### 流式处理和进度跟踪
 
 ```rust
-use exiftool_rs_wrapper::{
-    ExifTool, 
-    stream::{StreamingOperations, StreamOptions}
-};
+use exiftool_rs_wrapper::async_ext::AsyncExifTool;
+use exiftool_rs_wrapper::async_stream::StreamEvent;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let exiftool = ExifTool::new()?;
-    
-    // 定义进度回调
-    let on_progress = |processed: usize, total: usize, current: &str| {
-        let percent = (processed as f64 / total as f64) * 100.0;
-        println!("进度: {:.1}% ({}/{}): {}", percent, processed, total, current);
-    };
-    
-    let options = StreamOptions::new()
-        .chunk_size(1024 * 1024)  // 1MB 分块
-        .progress_callback(on_progress);
-    
-    // 流式处理大文件
-    let metadata = exiftool.stream_query("large_video.mp4", &options)?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let exiftool = AsyncExifTool::new()?;
+
+    // 流式查询文件元数据，支持进度跟踪
+    let (mut rx, _handle) = exiftool.stream_query("large_video.mp4").await?;
+
+    while let Some(event) = rx.recv().await {
+        match event {
+            StreamEvent::Progress(processed, total) => {
+                let pct = processed.checked_mul(100).and_then(|n| n.checked_div(total)).unwrap_or(0);
+                print!("\r进度: {}%", pct);
+            }
+            StreamEvent::MetadataChunk(metadata) => {
+                println!("\n收到 {} 个标签", metadata.len());
+            }
+            StreamEvent::Complete => {
+                println!("\n处理完成");
+                break;
+            }
+            StreamEvent::Error(e) => {
+                println!("\n处理出错: {}", e);
+                break;
+            }
+            _ => {}
+        }
+    }
 
     Ok(())
 }

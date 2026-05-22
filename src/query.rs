@@ -1344,14 +1344,6 @@ impl<'et> QueryBuilder<'et> {
         self
     }
 
-    /// 短格式输出
-    ///
-    /// 使用 `-s` 或 `-S` 选项以短格式输出
-    pub fn short_format(mut self, level: Option<u8>) -> Self {
-        self.short_format = level;
-        self
-    }
-
     /// Tab 分隔格式
     ///
     /// 使用 `-t` 选项以 Tab 分隔格式输出

@@ -113,22 +113,22 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-exiftool-rs-wrapper = "0.1.4"
+exiftool-rs-wrapper = "0.1.5"
 
 # Enable async support (optional)
-exiftool-rs-wrapper = { version = "0.1.4", features = ["async"] }
+exiftool-rs-wrapper = { version = "0.1.5", features = ["async"] }
 
 # Enable Serde struct support
-exiftool-rs-wrapper = { version = "0.1.4", features = ["serde-structs"] }
+exiftool-rs-wrapper = { version = "0.1.5", features = ["serde-structs"] }
 
 # Minimal build - only basic EXIF tags
-exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif"] }
+exiftool-rs-wrapper = { version = "0.1.5", default-features = false, features = ["exif"] }
 
 # Standard metadata (EXIF + IPTC + XMP + GPS)
-exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["standard"] }
+exiftool-rs-wrapper = { version = "0.1.5", default-features = false, features = ["standard"] }
 
 # Specific vendors only
-exiftool-rs-wrapper = { version = "0.1.4", default-features = false, features = ["exif", "canon", "nikon"] }
+exiftool-rs-wrapper = { version = "0.1.5", default-features = false, features = ["exif", "canon", "nikon"] }
 ```
 
 Custom ExifTool executable and config file:
@@ -387,38 +387,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use exiftool_rs_wrapper::{
-    ExifTool, 
-    file_ops::{FileOperations, RenamePattern}
+    ExifTool,
+    file_ops::FileOperations
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use exiftool_rs_wrapper::file_ops::RenamePattern;
     let exiftool = ExifTool::new()?;
-    
+
     // Rename based on DateTime
-    exiftool.rename_by_pattern(
+    let new_path = exiftool.rename_file(
         "photo.jpg",
-        RenamePattern::datetime("%Y%m%d_%H%M%S"),
+        &RenamePattern::datetime("%Y%m%d_%H%M%S"),
     )?;
-    
+    println!("New filename: {:?}", new_path);
+
     // Rename based on camera model
-    exiftool.rename_by_pattern(
+    let new_path = exiftool.rename_file(
         "photo.jpg",
-        RenamePattern::tag_with_suffix(
+        &RenamePattern::tag_with_suffix(
             exiftool_rs_wrapper::TagId::Model,
             "_IMG"
         ),
     )?;
-    
+    println!("New filename: {:?}", new_path);
+
     // Organize files into directory structure
     use exiftool_rs_wrapper::file_ops::OrganizeOptions;
-    
+
     let options = OrganizeOptions::new("/output/directory")
-        .subdir(RenamePattern::datetime("%Y/%m"))  // Create subdirs by year/month
+        .subdir(RenamePattern::datetime("%Y/%m"))
         .filename(RenamePattern::datetime("%Y%m%d_%H%M%S"))
         .extension("jpg");
-    
-    exiftool.organize_files(&["photo1.jpg", "photo2.jpg"], &options)?;
-    
+
+    exiftool.organize("photo1.jpg", &options)?;
+
     Ok(())
 }
 ```
@@ -426,31 +429,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Geolocation Processing
 
 ```rust
-use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations};
+use exiftool_rs_wrapper::{ExifTool, geo::GeoOperations, geo::GpsCoordinate};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exiftool = ExifTool::new()?;
-    
+
     // Read GPS coordinates
-    if let Some(coord) = exiftool.get_gps_coordinates("photo.jpg")? {
+    if let Some(coord) = exiftool.get_gps("photo.jpg")? {
         println!("Latitude: {}", coord.latitude);
         println!("Longitude: {}", coord.longitude);
-        println!("Altitude: {:?}", coord.altitude);
     }
-    
+
     // Write GPS coordinates
-    use exiftool_rs_wrapper::geo::GpsCoordinate;
-    
-    let coord = GpsCoordinate::new(39.9042, 116.4074)
-        .altitude(43.5);
-    
-    exiftool.set_gps_coordinates("photo.jpg", &coord)?;
-    
-    // Reverse geocoding (requires internet connection)
-    if let Some(location) = exiftool.reverse_geocode(&coord)? {
-        println!("City: {}", location.city);
-        println!("Country: {}", location.country);
-    }
+    let coord = GpsCoordinate::new(39.9042, 116.4074)?.with_altitude(43.5);
+
+    exiftool.set_gps("photo.jpg", &coord)?;
+
+    // Remove GPS information
+    exiftool.remove_gps("photo.jpg")?;
     
     Ok(())
 }

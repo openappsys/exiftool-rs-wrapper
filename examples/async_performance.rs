@@ -81,11 +81,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match event {
             StreamEvent::Progress(current, total) => {
-                let pct = if total > 0 { current * 100 / total } else { 0 };
+                let pct = current
+                    .checked_mul(100)
+                    .and_then(|n| n.checked_div(total))
+                    .unwrap_or(0);
                 print!("\r   进度: {}%", pct);
             }
             StreamEvent::MetadataChunk(_) => {
                 println!("\n   ✓ 收到元数据");
+            }
+            StreamEvent::Error(e) => {
+                println!("\n   ✗ 处理出错: {}", e);
+                break;
             }
             StreamEvent::Complete => {
                 println!("   ✓ 处理完成！");
