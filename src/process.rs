@@ -41,6 +41,17 @@ fn build_command(exe: impl AsRef<std::ffi::OsStr>) -> Command {
     cmd
 }
 
+/// 解析 `{readyNUM}` 标记中的命令编号
+///
+/// `trimmed` 必须是已确认以 `{ready` 开头、以 `}` 结尾且不等于 `{ready}` 的行。
+/// 注意：NUM 是 `-executeNUM` 回显的命令编号，并非错误码。
+fn parse_ready_num(trimmed: &str) -> Result<u32> {
+    let content = &trimmed[6..trimmed.len() - 1];
+    content
+        .parse::<u32>()
+        .map_err(|_| Error::process(format!("无法解析 {{ready}} 标记中的编号: {}", trimmed)))
+}
+
 /// 命令编号类型
 ///
 /// 用于在多命令执行场景中区分不同命令的响应
@@ -239,38 +250,17 @@ impl ExifToolInner {
                     break;
                 }
 
-                // 解析 {readyNUM} 格式
-                let content = &trimmed[6..trimmed.len() - 1];
-
-                // 检查是否为错误码
-                if let Ok(code) = content.parse::<i32>() {
-                    if code != 0 {
-                        let message = format!("ExifTool 返回错误码: {}", code);
-                        return Err(Error::process(message));
-                    }
-                    // 编号为 0 表示成功但不匹配（正常情况下不应该发生）
-                } else {
-                    // 解析命令编号
-                    match content.parse::<u32>() {
-                        Ok(num) => {
-                            if let Some(expected) = expected_num
-                                && num != expected
-                            {
-                                return Err(Error::process(format!(
-                                    "命令编号不匹配: 期望 {}, 收到 {}",
-                                    expected, num
-                                )));
-                            }
-                            break;
-                        }
-                        Err(_) => {
-                            return Err(Error::process(format!(
-                                "无法解析 {{ready}} 标记中的编号: {}",
-                                trimmed
-                            )));
-                        }
-                    }
+                // 解析 {readyNUM} 中的命令编号
+                let num = parse_ready_num(trimmed)?;
+                if let Some(expected) = expected_num
+                    && num != expected
+                {
+                    return Err(Error::process(format!(
+                        "命令编号不匹配: 期望 {}, 收到 {}",
+                        expected, num
+                    )));
                 }
+                break;
             }
 
             lines.push(buffer.clone());
@@ -539,6 +529,15 @@ mod tests {
         let req2 = CommandRequest::with_id(CommandId::new(42), args.clone());
         assert_eq!(req2.id.unwrap().value(), 42);
         assert_eq!(req2.args, args);
+    }
+
+    #[test]
+    fn test_parse_ready_num() {
+        // {readyNUM} 中的 NUM 是 -executeNUM 回显的命令编号，不是错误码
+        assert_eq!(parse_ready_num("{ready1}").unwrap(), 1);
+        assert_eq!(parse_ready_num("{ready42}").unwrap(), 42);
+        assert!(parse_ready_num("{readyabc}").is_err());
+        assert!(parse_ready_num("{ready}").is_err());
     }
 
     #[test]

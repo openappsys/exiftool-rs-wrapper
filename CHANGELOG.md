@@ -5,6 +5,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且该项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.1.7] - 2026-08-09
+
+### 修复
+
+- **`execute_multiple` 必然失败的严重 bug**：`{readyNUM}` 响应标记中的 NUM 是 `-executeNUM` 回显的命令编号，此前被误当作错误码解析，导致任何编号命令的第 1 条必报"返回错误码: 1"（自 0.1.5 起引入）。现改为正确解析并校验命令编号，同时消除了 `{ready0}` 导致死循环的隐藏路径
+
 ## [0.1.6] - 2026-08-09
 
 ### 修复
