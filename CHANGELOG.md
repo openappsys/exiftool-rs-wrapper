@@ -5,6 +5,14 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且该项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.1.6] - 2026-08-09
+
+### 修复
+
+- **Windows**: 启动 ExifTool 子进程时设置 `CREATE_NO_WINDOW` 标志，避免 GUI 程序调用时闪现控制台窗口（#1）
+- 修复 `tiny_jpeg` 测试辅助函数被错误添加 `async` feature 门控，导致默认 features 下 `cargo test --lib` 编译失败的问题
+- CI 补充默认/最小 features 组合的测试步骤，防止类似问题回归
+
 ## [0.1.5] - 2026-03-29
 
 ### 变更 (Breaking Changes)

@@ -116,6 +116,13 @@ jobs:
       - name: 运行测试 (仅库)
         run: cargo test --lib --all-features --verbose
 
+      # 覆盖默认/最小 features 组合，防止仅在 --all-features 下才能编译的问题
+      - name: 运行测试 (仅库, 默认 features)
+        run: cargo test --lib --verbose
+
+      - name: 运行测试 (仅库, 最小 features)
+        run: cargo test --lib --no-default-features --verbose
+
   # 代码覆盖率
   coverage:
     name: 代码覆盖率

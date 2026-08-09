@@ -791,7 +791,6 @@ pub(crate) mod tests {
     use super::*;
 
     /// 最小有效 JPEG 文件数据，供测试使用
-    #[cfg(feature = "async")]
     pub(crate) fn tiny_jpeg() -> &'static [u8] {
         &[
             0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00,
