@@ -11,6 +11,36 @@ use tracing::{debug, info, warn};
 
 const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Windows `CREATE_NO_WINDOW` 创建标志（0x0800_0000）
+///
+/// 用于在 Windows 上启动子进程时不弹出控制台窗口。
+/// std 未导出该常量，故此处硬编码（与 duct 等主流库做法一致）。
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// 构建用于启动 ExifTool `-stay_open` 进程的 [`Command`]
+///
+/// Windows 平台额外设置 `CREATE_NO_WINDOW` 标志，
+/// 避免 GUI 程序调用时闪现控制台窗口。
+fn build_command(exe: impl AsRef<std::ffi::OsStr>) -> Command {
+    let mut cmd = Command::new(exe);
+    cmd.arg("-stay_open")
+        .arg("True")
+        .arg("-@")
+        .arg("-")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd
+}
+
 /// 命令编号类型
 ///
 /// 用于在多命令执行场景中区分不同命令的响应
@@ -84,22 +114,13 @@ impl ExifToolInner {
     ) -> Result<Self> {
         info!("Starting ExifTool process with -stay_open mode");
 
-        let mut process = Command::new(exe)
-            .arg("-stay_open")
-            .arg("True")
-            .arg("-@")
-            .arg("-")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|e| {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    Error::ExifToolNotFound
-                } else {
-                    e.into()
-                }
-            })?;
+        let mut process = build_command(exe).spawn().map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                Error::ExifToolNotFound
+            } else {
+                e.into()
+            }
+        })?;
 
         let stdin = process
             .stdin
@@ -518,6 +539,14 @@ mod tests {
         let req2 = CommandRequest::with_id(CommandId::new(42), args.clone());
         assert_eq!(req2.id.unwrap().value(), 42);
         assert_eq!(req2.args, args);
+    }
+
+    #[test]
+    fn test_build_command_args() {
+        let cmd = build_command("exiftool");
+        assert_eq!(cmd.get_program(), "exiftool");
+        let args: Vec<_> = cmd.get_args().collect();
+        assert_eq!(args, ["-stay_open", "True", "-@", "-"]);
     }
 
     #[test]
